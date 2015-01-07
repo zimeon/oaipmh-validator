@@ -4,5 +4,7 @@ MYMETA.json
 MYMETA.yml
 pm_to_blib
 blib
+# Devel::Cover output
+cover_db
 # Editor files
 *~

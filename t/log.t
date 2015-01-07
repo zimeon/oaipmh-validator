@@ -1,17 +1,20 @@
 # Tests for HTTP::OAIPMH::Log
 use strict;
 
-use Test::More tests => 29;
+use Test::More tests => 49;
 use HTTP::OAIPMH::Log;
 
 my $log = HTTP::OAIPMH::Log->new;
-ok( $log, "created Log object" );
+ok( $log, "created new Log object" );
 
 # accessors
 is( $log->fh, undef, "empty fh" );
 is( $log->fh(\*STDERR), \*STDERR, "stderr fh" );
 is( $log->fh(undef), undef, "empty fh" );
 
+# logging
+$log = $log->new;
+ok( $log, "created new Log object" );
 is( $log->total, 0, 'zero total' );
 is( scalar(@{$log->log}), 0, "no entries" );
 
@@ -36,11 +39,44 @@ is( $log->total, 2, '2 pass+fail' );
 
 is( $log->num_warn, 0, "no warn" );
 ok( $log->warn('be-careful'), "warn" );
-is( $log->num_warn, 1, "1 warn" );
-is( $log->total, 2, '2 pass+fail' );
+ok( $log->warn('be-careful','very-careful'), "warn 2" );
+is( $log->num_warn, 2, "2 warn" );
+is( $log->total, 2, '2 pass+fail (warn not included in total)' );
 
 is( $log->num_pass, 0, "no pass" );
 ok( $log->pass('gud'), "pass" );
 is( $log->num_pass, 1, "1 pass" );
 is( $log->total, 3, '3 pass+fail' );
 
+# _add method and on-the-fly output
+my $str;
+my $fh;
+$log = HTTP::OAIPMH::Log->new;
+ok( $log, "created new Log object" );
+$str=''; open( $fh, '>', \$str);
+is( $log->fh($fh), $fh, "connected out to str" );
+ok( $log->_add("ONE","SOME"), "_add ONE SOME" );
+is( $str, "ONE:     SOME\n", "one line written" );
+
+$log = HTTP::OAIPMH::Log->new;
+ok( $log, "created new Log object" );
+$str=''; open($fh, '>', \$str); 
+is( $log->fh($fh), $fh, "connected out to str" );
+ok( $log->_add("TITLE","bingo"), "_add TITLE BINGO" );
+is( $str, "\n### bingo\n\n", "bingo line written" );
+
+$log = HTTP::OAIPMH::Log->new;
+ok( $log, "created new Log object" );
+$str=''; open($fh, '>', \$str); 
+is( $log->fh($fh), $fh, "connected out to str" );
+ok( $log->_add("WARN","short","long"), "_add WARN short long" );
+is( $str, "WARN:    short\n", "WARN line written without long" );
+ok( $log->_add("FAIL","short","very very very long"), "_add FAIL short long" );
+is( $str, "WARN:    short\nFAIL:    short\n", "FAIL line written without long" );
+
+$log = HTTP::OAIPMH::Log->new;
+ok( $log, "created new Log object" );
+$str=''; open($fh, '>', \$str); 
+is( $log->fh($fh), $fh, "connected out to str" );
+ok( $log->_add("NOTE","one","two","three"), "_add NOTE one two three" );
+is( $str, "NOTE:    one two three\n", "NOTE line written with all elements" );

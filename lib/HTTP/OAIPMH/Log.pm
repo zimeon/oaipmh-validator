@@ -52,6 +52,7 @@ L<Class::Accessor::Fast>:
 
 sub new {
     my $this=shift;
+    # uncoverable condition false
     my $class=ref($this) || $this;
     my $self={'log'=>[],
               'fh'=>undef,
@@ -175,10 +176,15 @@ sub _add {
     if ($self->{fh}) {
         my $type = shift(@_);
         if ($type eq 'TITLE') {
-            print {$self->{fh}} "\n### ".join(' : ',@_)."\n\n";
+            print {$self->{fh}} "\n### ".join(' ',@_)."\n\n";
         } else {
             printf {$self->{fh}} ("%-8s ",$type.':');
-            print {$self->{fh}} join(' ',@_)."\n";
+	    if ($type eq 'WARN' or $type eq 'FAIL') {
+	        # only $msg not $longmsg
+                print {$self->{fh}} shift(@_)."\n";
+            } else {
+	        print {$self->{fh}} join(' ',@_)."\n";
+	    }
         }
     }
     return(1);
