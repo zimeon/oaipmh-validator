@@ -5,11 +5,11 @@ HTTP::OAIPMH::Log - Log of validation results
 # SYNOPSIS
 
 Validation logging for [HTTP::OAIPMH::Validator](https://metacpan.org/pod/HTTP::OAIPMH::Validator). Stores log of information
-as an array of entries in $self->log, where each entry is itself an array
+as an array of entries in $obj->log, where each entry is itself an array
 where the first element is the type (indicated by a string) and then additional
 information.
 
-Also supports output of a text summary during operation is $self->fh is 
+Also supports output of a text summary during operation if $obj->fh is 
 set to a filehandle for output.
 
 Example use:
@@ -44,3 +44,32 @@ attributes. All attributes also have accessors provided via
 
 Return the total number of pass and fail events recorded. Note 
 that this doesn't include warnings.
+
+### start($title)
+
+Start a test or section and record a title.
+
+### request($url,$type,$content)
+
+Add a note of the HTTP request used in this test. Must specify
+the $url, may include the $type (GET|POST) and for POST
+the $content.
+
+### note($note)
+
+Add note of extra information that doesn't impact validity.
+
+### fail($msg,$longmsg)
+
+Record a failure and increment the $obj->num\_fail count. Must have
+a message $msg and may optionally include a longer explanation $longmsg.
+
+### warn($msg,$longmsg)
+
+Record a warning and increment the $obj->num\_warn count. Must have
+a message $msg and may optionally include a longer explanation $longmsg.
+
+### pass($msg,$longmsg)
+
+Record a success and increment the $obj->num\_pass count. Must have
+a message $msg explaining what has passed.
