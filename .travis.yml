@@ -12,7 +12,7 @@ install:
   - cpanm -n -q --skip-satisfied --notest --installdeps .
 #script: prove -lr t
 script:
-  - PERL5OPT=-MDevel::Cover=-coverage,statement,branch,condition,path,subroutine prove -lrsv t
+  - PERL5OPT=-MDevel::Cover="-coverage,statement,branch,condition,path,subroutine+ignore=prove,t" prove -lrsv t
   - cover
 after_success:
   - cover -report coveralls
