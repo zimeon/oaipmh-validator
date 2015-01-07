@@ -35,6 +35,7 @@ use HTTP::Headers;
 use HTTP::Request::Common;        # makes POST easier
 use HTTP::Status;                 # for checking error codes
 use LWP::UserAgent;               # send http requests
+use LWP::Protocol::https;         # explicit include so we fail without https support
 use URI::Escape;                  # excape special characters
 use XML::DOM;                     # for parsing XSV output
 use HTTP::OAIPMH::Log;
@@ -107,7 +108,7 @@ sub new {
         'example_set_spec' => undef,
         'example_metadata_prefix' => 'oai_dc',
         'log' => HTTP::OAIPMH::Log->new(),
-        'status' => undef,
+        'status' => 'unknown',
         @_};
     bless($self, $class);
     $self->setup_user_agent if (not $self->ua);
@@ -130,6 +131,7 @@ sub setup_user_agent {
     $ua->from('https://groups.google.com/d/forum/oai-pmh');  # set a default From: address -> direct to google group for dicussion
     $self->ua($ua);
 }
+
 
 =head3 abort($msg)
 
@@ -1620,6 +1622,15 @@ the request should be an HTTP POST request instead of a GET.
 sub make_request {
     my $self=shift;
     my ($url,$post_data) = @_;
+
+    # Is this https and do we allow that?
+    if (is_https_uri($url)) {
+        $self->uses_https(1);
+	if (not $self->allow_https) {
+	   $self->abort("URI $url is https. The HTTPS protocol is not specified in the OAI-PMH and is not currently supported");
+	}
+    }
+
     my $request;
     if ($post_data) {
         my $content_msg=''; #nice string to report
@@ -1687,8 +1698,6 @@ sub make_request {
                     if (not $self->allow_https) {
                         $self->abort("Bad https Location specified in 302 response ('$loc'). The HTTPS protocol is not specified in the OAI-PMH and is not currently supported");
                     }
-                } else {
-                    $self->abort("Bad Location specified in 302 response ('$loc')");
                 }
             }
             # Make new request
@@ -1697,6 +1706,8 @@ sub make_request {
             } else {
                 $request = GET($loc);
             }
+        } elsif ($response->code eq '501') {
+            $self->abort("Got 501 Not Implemented response which may either have come from the server or have been generated within the validator because the request type (perhaps https) is not supported.");
         } else {
             $try_again=0;
         }
@@ -1815,6 +1826,19 @@ sub url_encode {
     $str =~ tr/ /+/;
     return($str);
 }
+
+
+=head3 is_https_uri($uri)
+
+Return true if the URI is an https URI, false otherwise.
+
+=cut
+
+sub is_https_uri {
+  my $uri=shift;
+  return($uri=~m%^https:%);
+}
+
 
 =head1 SUPPORT
 
