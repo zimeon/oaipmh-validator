@@ -10,9 +10,9 @@ perl:
 install:
   - cpanm --quiet --notest Devel::Cover::Report::Coveralls
   - cpanm -n -q --skip-satisfied --notest --installdeps .
-#script: prove -lr t
+# docs for options: http://search.cpan.org/~pjcj/Devel-Cover-1.17/lib/Devel/Cover.pm
 script:
-  - PERL5OPT=-MDevel::Cover="-coverage,statement,branch,condition,path,subroutine+ignore=prove" prove -lrsv t
+  - PERL5OPT=-MDevel::Cover=-coverage,statement,branch,condition,path,subroutine,-ignore,prove prove -lr t
   - cover
 after_success:
   - cover -report coveralls
