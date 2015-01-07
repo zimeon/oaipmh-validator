@@ -8,6 +8,6 @@ complete and not yet used for that service...
 
 ## Documentation extracted from Perl POD
 
-  * [HTTP::OAIPMH::Validator](Validator.pm)
-  * [HTTP::OAIPMH::Log](Log.pm)
+  * [HTTP::OAIPMH::Validator](Validator.md)
+  * [HTTP::OAIPMH::Log](Log.md)
 
