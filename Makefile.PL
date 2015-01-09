@@ -26,3 +26,24 @@ WriteMakefile(
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean               => { FILES => 'HTTP-OAIPMH-Validator-*' },
 );
+
+# Add in cover and coverclean targets
+#
+# Do this by simply writing text verbatim into the postamble
+# section of the Makefile. Based on
+# <http://search.cpan.org/~bingos/ExtUtils-MakeMaker-7.04/lib/ExtUtils/MakeMaker.pm#Overriding_MakeMaker_Methods>
+#
+# FIXME - should find a way to add coverclean to clean
+#
+sub MY::postamble {
+    return << 'COVER';
+
+cover:
+	PERL5OPT=-MDevel::Cover=-coverage,statement,branch,condition,path,subroutine,-ignore,prove,t/ prove -lr t
+	cover
+
+coverclean:
+	rm -rf cover_db
+
+COVER
+}
