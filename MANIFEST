@@ -6,6 +6,7 @@ MANIFEST
 MANIFEST.SKIP
 MYMETA.json
 MYMETA.yml
+README.cpan.md
 t/log.t
 t/pod.t
 t/validator.t
