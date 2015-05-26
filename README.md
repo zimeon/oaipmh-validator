@@ -9,6 +9,15 @@ Tidy and refactor of code used for the OAI-PMH validation services
 at <http://www.openarchives.org/data/registerasprovider.html>. Not yet
 complete and not yet used for that service...
 
+## Test validator
+
+A complete command-line validator based on this module is provided in
+the examples directory, use -h for help:
+
+```
+> examples/oaipmh-validator.pl -h
+```
+
 ## Documentation extracted from Perl POD
 
   * [HTTP::OAIPMH::Validator](Validator.md)

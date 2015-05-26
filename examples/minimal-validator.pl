@@ -1,5 +1,6 @@
 #!/usr/bin/env perl
 use strict;
+use lib qw(lib);
 use HTTP::OAIPMH::Validator;
 use Try::Tiny;
 foreach my $base_url (@ARGV) {

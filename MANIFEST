@@ -1,0 +1,11 @@
+examples/minimal-validator.pl
+examples/oaipmh-validator.pl
+lib/HTTP/OAIPMH/Log.pm
+lib/HTTP/OAIPMH/Validator.pm
+MANIFEST
+MANIFEST.SKIP
+MYMETA.json
+MYMETA.yml
+t/log.t
+t/pod.t
+t/validator.t

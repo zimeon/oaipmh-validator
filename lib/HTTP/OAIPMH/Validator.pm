@@ -26,7 +26,7 @@ Typical use:
 
 use strict;
 
-our $VERSION = '0.99';
+our $VERSION = '0.95';
 
 use base qw(Class::Accessor::Fast);
 use Date::Manip;

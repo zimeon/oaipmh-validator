@@ -1,0 +1,11 @@
+~$          # ignore emacs and vim backup files
+.bak$       # ignore manual backups
+\#          # ignore emacs temp files
+.git        # ignore git stuff
+.travis.yml # ignore TravisCI setup
+cover_db    # ignore coverage info
+.md$        # ignore Markdown docs for github
+.tar.gz$    # ignore dist packages
+Makefile    # ignore Makefile built from Makefile.PL
+blib
+pm_to_blib
