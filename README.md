@@ -23,3 +23,17 @@ the examples directory, use -h for help:
   * [HTTP::OAIPMH::Validator](Validator.md)
   * [HTTP::OAIPMH::Log](Log.md)
 
+## Installation and CPAN
+
+This module is available from CPAN, see 
+<https://metacpan.org/pod/HTTP::OAIPMH::Validator> or 
+<http://search.cpan.org/~simeon/HTTP-OAIPMH-Validator/>,
+and may be downloaded in the usual way:
+
+```
+> cpan HTTP::OAIPMH::Validator
+```
+
+Alternatively source may be downloaded from github or CPAN and
+either used without installing (e.g. as test validator is above),
+or installed as described in <README.cpan.md>.
