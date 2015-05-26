@@ -7,6 +7,7 @@ WriteMakefile(
     AUTHOR              => 'Simeon Warner <simeon@cpan.org>',
     ABSTRACT            => 'OAI-PMH Validator used for http://www.openarchives.org/pmh/validate',
     VERSION_FROM        => 'lib/HTTP/OAIPMH/Validator.pm',
+    LICENSE		=> 'perl',
     PL_FILES            => {},
     PREREQ_PM => {
 	'Class::Accessor::Fast' => 0.34,
