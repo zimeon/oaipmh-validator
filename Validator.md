@@ -17,7 +17,7 @@ Typical use:
         $val->run_complete_validation;
     } catch {
         warn "oops, validation didn't run to completion: $!\n";
-    }
+    };
     print "Validation status of data provider ".$val->base_url." is ".$val->status."\n";
 
 ## METHODS
