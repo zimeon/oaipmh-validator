@@ -5,7 +5,7 @@
 .travis.yml # ignore TravisCI setup
 cover_db    # ignore coverage info
 .tar.gz$    # ignore dist packages
-Makefile    # ignore Makefile built from Makefile.PL
+Makefile$   # ignore Makefile built from Makefile.PL
 README.md   # want just CPAN one
 Validator.md
 Log.md

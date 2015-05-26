@@ -2,6 +2,7 @@ examples/minimal-validator.pl
 examples/oaipmh-validator.pl
 lib/HTTP/OAIPMH/Log.pm
 lib/HTTP/OAIPMH/Validator.pm
+Makefile.PL
 MANIFEST
 MANIFEST.SKIP
 MYMETA.json
