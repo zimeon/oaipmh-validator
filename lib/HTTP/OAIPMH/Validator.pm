@@ -19,7 +19,7 @@ Typical use:
       $val->run_complete_validation;
   } catch {
       warn "oops, validation didn't run to completion: $!\n";
-  }
+  };
   print "Validation status of data provider ".$val->base_url." is ".$val->status."\n";
 
 =cut
@@ -55,7 +55,7 @@ accessors (via L<Class::Accessor::Fast>):
   uses_https - set true if the validator sees an https URL at any stage
 
   debug - set true to add extra debugging output
-  logfh - set to a filehandle to log as validation progesses (might typically use \*STDOUT or \*STDERR)
+  log - logging object (usually L<HTTP::OAIPMH::Log>)
   parser - XML DOM parser instance 
 
   identify_response - string of identify response (used for registration record)
