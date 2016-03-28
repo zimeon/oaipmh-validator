@@ -17,7 +17,8 @@ WriteMakefile(
         'HTTP::Request::Common' => 6.04,
 	'HTTP::Status' => 6.03,
         'LWP::UserAgent' => 6.06,
-	'LWP::Protocol::https' => 6.06, #https support
+	'LWP::Protocol::https' => 6.06, # https support
+        'Crypt::SSLeay' => 0.72, # for Net::SSL
 	'Try::Tiny' => 0.19,
         'URI::Escape' => 3.31,
         'XML::DOM' => 1.44,
