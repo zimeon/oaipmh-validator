@@ -12,10 +12,12 @@ WriteMakefile(
     PREREQ_PM => {
 	'Class::Accessor::Fast' => 0.34,
 	'Date::Manip' => 6.48,
+	'Data::UUID' => 1.22,
         'HTTP::Request' => 6.00,
         'HTTP::Headers' => 6.05,
         'HTTP::Request::Common' => 6.04,
 	'HTTP::Status' => 6.03,
+	'JSON' => 2.9,
         'LWP::UserAgent' => 6.06,
 	'LWP::Protocol::https' => 6.06, # https support
         'Crypt::SSLeay' => 0.72, # for Net::SSL

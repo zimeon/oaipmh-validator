@@ -1,7 +1,7 @@
 # Perl OAI-PMH validator class
 
 [![Build status](https://travis-ci.org/zimeon/oaipmh-validator.svg?branch=master)](https://travis-ci.org/zimeon/oaipmh-validator)
-[![Test coverage](https://coveralls.io/repos/zimeon/oaipmh-validator/badge.png?branch=master)](https://coveralls.io/r/zimeon/oaipmh-validator?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/zimeon/oaipmh-validator/badge.svg?branch=master)](https://coveralls.io/github/zimeon/oaipmh-validator?branch=master)
 
 *Work in progress...*
 
