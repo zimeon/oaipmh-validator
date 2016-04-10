@@ -77,7 +77,7 @@ HTTP::OAIPMH::Validator->mk_accessors( qw( base_url protocol_version
     response_number http_timeout max_retries max_size
     identify_response earliest_datestamp namespace_id set_names
     example_record_id example_set_spec example_metadata_prefix
-    log status
+    log status protocol
     ) );
 
 sub new {
@@ -161,6 +161,7 @@ sub abort {
     my $self=shift;
     my ($msg)=@_;
     $self->log->fail('ABORT: '.$msg);
+    $self->status('FAILED');
     die('ABORT: '.$msg);
 }
 
