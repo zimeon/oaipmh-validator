@@ -1,16 +1,19 @@
 # Tests for HTTP::OAIPMH::Log
 use strict;
 
-use Test::More tests => 49;
+use Test::More tests => 58;
 use HTTP::OAIPMH::Log;
+use JSON qw(decode_json);
 
 my $log = HTTP::OAIPMH::Log->new;
 ok( $log, "created new Log object" );
 
-# accessors
+# add loggers
 is( $log->fh, undef, "empty fh" );
 is( $log->fh(\*STDERR), \*STDERR, "stderr fh" );
 is( $log->fh(undef), undef, "empty fh" );
+is( $log->fh(\*STDOUT), \*STDOUT, "stderr fh, json" );
+is( scalar(@{$log->filehandles}), 2, "2 loggers");
 
 # logging
 $log = $log->new;
@@ -48,7 +51,7 @@ ok( $log->pass('gud'), "pass" );
 is( $log->num_pass, 1, "1 pass" );
 is( $log->total, 3, '3 pass+fail' );
 
-# _add method and on-the-fly output
+# _add method and on-the-fly output in markdown
 my $str;
 my $fh;
 $log = HTTP::OAIPMH::Log->new;
@@ -80,3 +83,17 @@ $str=''; open($fh, '>', \$str);
 is( $log->fh($fh), $fh, "connected out to str" );
 ok( $log->_add("NOTE","one","two","three"), "_add NOTE one two three" );
 is( $str, "NOTE:    one two three\n", "NOTE line written with all elements" );
+
+# _add method and on-the-fly output in json
+my $str;
+my $fh;
+$log = HTTP::OAIPMH::Log->new;
+ok( $log, "created new Log object" );
+$str=''; open( $fh, '>', \$str);
+is( $log->fh($fh,'json'), $fh, "connected out to str, type json" );
+ok( $log->_add("ONE","SOME"), "_add ONE SOME" );
+my $j = decode_json($str);
+is( $j->{'num'}, 1, 'num==1' );
+is( $j->{'type'}, 'ONE', 'type==ONE' );
+is( $j->{'msg'}, 'SOME', 'msg==SOME' );
+ok( $j->{'timestamp'}, 'timestamp is True' );

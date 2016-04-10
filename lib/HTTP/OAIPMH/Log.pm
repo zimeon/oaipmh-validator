@@ -11,8 +11,9 @@ as an array of entries in $obj->log, where each entry is itself an array
 where the first element is the type (indicated by a string) and then additional
 information.
 
-Also supports output of a text summary during operation if $obj->fh is 
-set to a filehandle for output.
+Also supports output of a text summary (markdown) and/or JSON data 
+during operation if the $obj->filehandles array is set to include one 
+or more filehandle and types for output.
 
 Example use:
 
@@ -31,8 +32,9 @@ Example use:
 =cut
 
 use strict;
+use JSON qw(encode_json);
 use base qw(Class::Accessor::Fast);
-HTTP::OAIPMH::Log->mk_accessors( qw(log fh num_pass num_fail num_warn) );
+HTTP::OAIPMH::Log->mk_accessors( qw(log filehandles num_pass num_fail num_warn) );
 
 =head2 METHODS
 
@@ -55,7 +57,7 @@ sub new {
     # uncoverable condition false
     my $class=ref($this) || $this;
     my $self={'log'=>[],
-              'fh'=>undef,
+              'filehandles'=>[],
               'num_pass'=>0,
               'num_fail'=>0,
               'num_warn'=>0,
@@ -63,6 +65,24 @@ sub new {
     bless($self, $class);
     return($self);
 }    
+
+
+=head3 fh($fh, $type)
+
+Add a filehandle to the logger. If $type is set equal to 'json' then 
+JSON will be written, otherwise text output in markdown format. The
+call is ignore unless $fh is True.
+
+=cut
+
+sub fh {
+    my $self=shift;
+    my ($fh,$type)=@_;
+    return() if (not $fh);
+    $type ||= 'md';
+    push(@{$self->{filehandles}},{'fh'=>$fh,'type'=>$type});
+    return($fh);
+}
 
 
 =head3 num_total()
@@ -168,26 +188,51 @@ sub pass {
 #
 # Add an entry to @{$obj->log} which has type $type and then
 # a set of content elements @content (assumed to be scalars).
-# Used buy all the pass, fail, warn, start methods.
+# Used by all the pass, fail, warn, start methods.
 #
 sub _add {
     my $self=shift;
     push( @{$self->{log}}, [@_] );
-    if ($self->{fh}) {
+    if (scalar($self->filehandles)>0) {
         my $type = shift(@_);
+	my $md_prefix = '';
+	my $md_suffix = "\n";
+	my $msg = '';
         if ($type eq 'TITLE') {
-            print {$self->{fh}} "\n### ".join(' ',@_)."\n\n";
+	    $md_prefix = "\n### ";
+	    $md_suffix = "\n\n";
+	    $msg = join(' ',@_);
         } else {
-            printf {$self->{fh}} ("%-8s ",$type.':');
+            $md_prefix = sprintf("%-8s ",$type.':');
 	    if ($type eq 'WARN' or $type eq 'FAIL') {
 	        # only $msg not $longmsg
-                print {$self->{fh}} shift(@_)."\n";
+                $msg = shift(@_);
             } else {
-	        print {$self->{fh}} join(' ',@_)."\n";
+	        $msg = join(' ',@_);
+	    }
+        }
+	foreach my $fhd (@{$self->filehandles}) {
+	    if ($fhd->{'type'} eq 'json') {
+	        $self->_write_json($fhd->{'fh'},$type,$msg);
+	    } else {
+	        $self->_write_md($fhd->{'fh'},$md_prefix,$msg,$md_suffix);
 	    }
         }
     }
     return(1);
+}
+
+
+sub _write_md {
+    my $self=shift;
+    my $fh=shift;
+    print {$fh} join('',@_);
+}
+
+sub _write_json {
+    my $self=shift;
+    my ($fh,$type,$msg)=@_;
+    print {$fh} encode_json({ type=>$type, msg=>$msg, num=>scalar(@{$self->{log}}), timestamp=>''.localtime() });
 }
 
 1;
