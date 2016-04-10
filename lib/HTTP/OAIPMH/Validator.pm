@@ -29,6 +29,7 @@ use strict;
 our $VERSION = '0.99';
 
 use base qw(Class::Accessor::Fast);
+use Data::UUID;
 use Date::Manip;
 use HTTP::Request;                # for rendering http queries
 use HTTP::Headers;
@@ -50,6 +51,7 @@ The following instance variables may be set via %args and have read-write
 accessors (via L<Class::Accessor::Fast>):
 
   base_url - base URL of the data provdier being validated
+  run_id - UUID identifying the run (will be generated if none supplied)
   protocol_version - protocol version supported
   granularity - datestamp granularity (defaults to 'days', else 'seconds')
   uses_https - set true if the validator sees an https URL at any stage
@@ -71,8 +73,8 @@ accessors (via L<Class::Accessor::Fast>):
 
 HTTP::OAIPMH::Validator->mk_accessors( qw( base_url protocol_version 
     granularity uses_503 uses_https
-    debug parser ua allow_https content doc save_all_responses
-    http_timeout max_retries max_size
+    debug parser run_id ua allow_https content doc save_all_responses
+    response_number http_timeout max_retries max_size
     identify_response earliest_datestamp namespace_id set_names
     example_record_id example_set_spec example_metadata_prefix
     log status
@@ -89,13 +91,15 @@ sub new {
         'uses_503' => 0,            # set true if 503 responses ever used
         'uses_https' => 0,          # set to true if https is ever used
         # Control
-	    'debug' => 0,
+	'debug' => 0,
         'parser' => XML::DOM::Parser->new(),
+	'run_id' => undef,
         'ua' => undef,
         'allow_https' => 0,         # allow https redirects
         'content' => undef,         # current unparsed response content
         'doc' => undef,             # current parsed xml document
-        'save_all_responses' => 0,  # set to 1 to save all HTTP responses
+        'save_all_responses' => 0,  # set True to save all HTTP responses
+	'response_number' => 1,     # initial response number
         'http_timeout' => 600,
         'max_retries' => 5,         # number of 503's in a row that we will accept
         'max_size' => 100000000,    # max response size in bytes (100MB)
@@ -111,8 +115,21 @@ sub new {
         'status' => 'unknown',
         @_};
     bless($self, $class);
+    $self->setup_run_id if (not $self->run_id);
     $self->setup_user_agent if (not $self->ua);
     return($self);
+}
+
+=head3 setup_run_id()
+
+Set a UUID for the run_id.
+
+=cut
+
+sub setup_run_id {
+    my $self=shift;
+    my $ug=Data::UUID->new;
+    $self->run_id(lc($ug->to_string($ug->create)));
 }
 
 =head3 setup_user_agent()
@@ -160,6 +177,7 @@ sub run_complete_validation {
     my $self=shift;
     my ($register,$requestorIP)=@_;
 
+    $self->response_number(1);
     $self->test_identify;
     $self->test_list_sets;
     $self->test_list_identifiers;
@@ -1653,13 +1671,13 @@ sub make_request {
         $response = $self->ua->request($request);
         #
         # Write response if requested
-        if ($self->save_all_responses>0) {
-            my $response_file="/tmp/OAI-PMH-Validator.$$.".$self->save_all_responses;
+        if ($self->save_all_responses) {
+            my $response_file="/tmp/".$self->run_id.".".$self->response_number;
             open(my $fh,'>',$response_file) || die "Can't write response $response_file: $!";
             print {$fh} $response->content();
             $self->log->note("Response saved as $response_file") if ($self->debug);
             close($fh);
-            $self->{save_all_responses}++;
+            $self->{response_number}++;
         }
         $tries++;
         if ($tries > $self->max_retries) { 
@@ -1867,7 +1885,7 @@ be used for the OAI-PMH validation and registration service.
 
 =head1 COPYRIGHT
 
-Copyright 2001..2015 by Simeon Warner, Donna Bergmark.
+Copyright 2001..2016 by Simeon Warner, Donna Bergmark.
 
 This library is free software; you can redistribute it and/or modify it under 
 the same terms as Perl itself.

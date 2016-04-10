@@ -190,6 +190,10 @@ sub pass {
 # a set of content elements @content (assumed to be scalars).
 # Used by all the pass, fail, warn, start methods.
 #
+# In addition to recording the data in $self->{log} array, will
+# write output in markdown or JSON to each of the filehandles in
+# $self->filehandles.
+#
 sub _add {
     my $self=shift;
     push( @{$self->{log}}, [@_] );
@@ -222,17 +226,27 @@ sub _add {
     return(1);
 }
 
-
+# _write_md($fh, @msg) - Write a markdown log entry tp $fh, combining
+# all @msg by simple concatenation to make the string
+#
 sub _write_md {
     my $self=shift;
     my $fh=shift;
     print {$fh} join('',@_);
 }
 
+# _write_json($fh,$type,$msg) - Write a one-line JSON object to
+# $fh, terminate with \n.
+#
 sub _write_json {
     my $self=shift;
     my ($fh,$type,$msg)=@_;
-    print {$fh} encode_json({ type=>$type, msg=>$msg, num=>scalar(@{$self->{log}}), timestamp=>''.localtime() });
+    print {$fh} encode_json({ type=>$type, msg=>$msg,
+                              num=>scalar(@{$self->{log}}),
+                              pass=>$self->num_pass,
+                              fail=>$self->num_fail,
+                              warn=>$self->num_warn,
+                              timestamp=>''.localtime() })."\n";
 }
 
 1;
