@@ -763,10 +763,10 @@ sub test_get_record {
         last if ($set_list->item($i)->getFirstChild->getData eq $set_value);
     }
     if ($i==$set_list->getLength) {         # error
-        $self->log->fail("setSpec was missing from the response",
+        $self->log->fail("Expected setSpec was missing from the response",
                "The getRecord response for identifier $record_id did not contain a set specification for $set_value");
     } else {
-        $self->log->pass("setSpec was returned in the response");
+        $self->log->pass("Expected setSpec was returned in the response");
     }
     return($datestamp);
 }
