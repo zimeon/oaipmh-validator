@@ -6,6 +6,9 @@ pm_to_blib
 blib
 HTTP-OAIPMH-Validator-*.tar.gz
 MANIFEST.bak
+# Link to sim and log
+oaipmh-simulator
+log.jsons
 # Devel::Cover output
 cover_db
 # Editor files
