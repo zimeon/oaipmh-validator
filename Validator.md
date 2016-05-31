@@ -358,9 +358,9 @@ service was supported through NSF award number 0127308.
 Code was abstracted into this module 2015-01 by Simeon Warner and will
 be used for the OAI-PMH validation and registration service.
 
-# COPYRIGHT
+# COPYRIGHT AND LICENSE
 
-Copyright 2001..2015 by Simeon Warner, Donna Bergmark.
+Copyright 2001..2016 by Simeon Warner, Donna Bergmark.
 
 This library is free software; you can redistribute it and/or modify it under 
 the same terms as Perl itself.
