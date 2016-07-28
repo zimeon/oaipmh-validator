@@ -12,8 +12,8 @@ Will run validator on and OAI-PMH data provider at baseURL. Will
 show progress as the validation and (optionally) write a log
 of JSON snippets.
 
-  -i run_id  use specified run_id (expected to be UUID, used a file prefix,
-             implies -w )
+  -i run_id  use specified run_id (expected to be UUID, used as a
+             file prefix, implies -w)
   -w         write responses to files in tmp
   -l logfile write log of JSON snippets
   -s         allow HTTPS base URL (not part of the OAI-PMH specification)

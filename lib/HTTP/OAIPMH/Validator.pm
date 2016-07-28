@@ -26,7 +26,7 @@ Typical use:
 
 use strict;
 
-our $VERSION = '1.01';
+our $VERSION = '1.02';
 
 use base qw(Class::Accessor::Fast);
 use Data::UUID;
@@ -162,7 +162,7 @@ sub abort {
     my ($msg)=@_;
     $self->log->fail('ABORT: '.$msg);
     $self->status('FAILED');
-    die('ABORT: '.$msg);
+    die('ABORT: '.$msg."\n");
 }
 
 
@@ -1674,7 +1674,7 @@ sub make_request {
         # Write response if requested
         if ($self->save_all_responses) {
             my $response_file="/tmp/".$self->run_id.".".$self->response_number;
-            open(my $fh,'>',$response_file) || die "Can't write response $response_file: $!";
+            open(my $fh,'>',$response_file) || $self->abort("Can't write response $response_file: $!");
             print {$fh} $response->content();
             $self->log->note("Response saved as $response_file") if ($self->debug);
             close($fh);
