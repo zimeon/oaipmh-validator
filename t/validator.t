@@ -19,7 +19,7 @@ try {
 } catch {
     $caught=$_;
 };
-ok( $caught=~m/^ABORT: bwaaaa! /, 'abort dies' );
+ok( $caught=~m/^ABORT: bwaaaa!/, 'abort dies' );
 
 #run_complete_validation
 
