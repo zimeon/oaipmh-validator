@@ -91,15 +91,15 @@ sub new {
         'uses_503' => 0,            # set true if 503 responses ever used
         'uses_https' => 0,          # set to true if https is ever used
         # Control
-	'debug' => 0,
+        'debug' => 0,
         'parser' => XML::DOM::Parser->new(),
-	'run_id' => undef,
+        'run_id' => undef,
         'ua' => undef,
         'allow_https' => 0,         # allow https redirects
         'content' => undef,         # current unparsed response content
         'doc' => undef,             # current parsed xml document
         'save_all_responses' => 0,  # set True to save all HTTP responses
-	'response_number' => 1,     # initial response number
+        'response_number' => 1,     # initial response number
         'http_timeout' => 600,
         'max_retries' => 5,         # number of 503's in a row that we will accept
         'max_size' => 100000000,    # max response size in bytes (100MB)
@@ -192,12 +192,12 @@ sub run_complete_validation {
     if ( $gotDC ) {
         $self->log->pass("Data provider supports oai_dc metadataPrefix");
     } else {
-    	if ($formats and $formats->getLength()>0) {
-    	    $self->example_metadata_prefix( $formats->item(0)->getFirstChild->getData );
-    	    $self->log->fail("Data provider does not support the simple Dublin Core metadata format with metadataPrefix oai_dc. Tests that require a metadataPrefix to be specified will use '".$self->example_metadata_prefix."'");
-    	} else {
-    	    $self->log->fail("There are no metadata formats available to use with the GetRecord request. The metadataPrefix ".$self->example_metadata_prefix." will be used for later tests even though it seems unsupported.");
-    	}
+        if ($formats and $formats->getLength()>0) {
+            $self->example_metadata_prefix( $formats->item(0)->getFirstChild->getData );
+            $self->log->fail("Data provider does not support the simple Dublin Core metadata format with metadataPrefix oai_dc. Tests that require a metadataPrefix to be specified will use '".$self->example_metadata_prefix."'");
+        } else {
+            $self->log->fail("There are no metadata formats available to use with the GetRecord request. The metadataPrefix ".$self->example_metadata_prefix." will be used for later tests even though it seems unsupported.");
+        }
     }
 
     my ($dateStamp)=$self->test_get_record($self->example_record_id,$self->example_metadata_prefix);
@@ -715,7 +715,7 @@ sub test_get_record {
 
     if (my $msg=$self->is_error_response) {
         $self->log->fail("The response to the GetRecord verb was the OAI exception $msg. It is this not possible to extract a valid datestamp for remaining tests");
-        $self->abort("No datestamp in the response for GetRecord");
+        $self->abort("Unexpected OAI exception response");
     }
 
     my $datestamps = $self->doc->getElementsByTagName('datestamp');
@@ -757,16 +757,22 @@ sub test_get_record {
     my $set_list = $self->doc->getElementsByTagName('setSpec');
     my $set_value = $self->example_set_spec;
     $set_value =~ s/&set=//;
-    $self->log->note("Looking for set '".$set_value."'") if $self->debug;
+    $self->log->note("Looking for set '".$set_value."' or a descendant set.") if $self->debug;
     my $i;
+    my $subset_str = '';
     for ($i=0; $i<$set_list->getLength; $i++) {
-        last if ($set_list->item($i)->getFirstChild->getData eq $set_value);
+        my $s = $set_list->item($i)->getFirstChild->getData;
+        last if ($s eq $set_value);
+    if ($s =~ m/^${set_value}:/) {
+        $subset_str = " (implied by a descendant setSpec)";
+        last;
+        }
     }
     if ($i==$set_list->getLength) {         # error
         $self->log->fail("Expected setSpec was missing from the response",
-               "The getRecord response for identifier $record_id did not contain a set specification for $set_value");
+               "The GetRecord response for identifier $record_id did not contain a set specification for $set_value");
     } else {
-        $self->log->pass("Expected setSpec was returned in the response");
+        $self->log->pass("Expected setSpec was returned in the response".$subset_str);
     }
     return($datestamp);
 }
@@ -1281,11 +1287,11 @@ sub error_elements_include {
     # sanity check
     return if (!$error_elements or $error_elements->getLength==0);
     for (my $i=0; $i<$error_elements->getLength; $i++) {
-    	foreach my $ec (@$error_codes) {
+        foreach my $ec (@$error_codes) {
             my $code = $error_elements->item($i)->getAttribute('code') || 'no-code-attribute';
             $self->log->note("$code =? $ec") if ($self->debug);
-    	    return($ec) if ($code eq $ec);
-    	}
+            return($ec) if ($code eq $ec);
+        }
     }
     return;
 }
@@ -1645,9 +1651,9 @@ sub make_request {
     # Is this https and do we allow that?
     if (is_https_uri($url)) {
         $self->uses_https(1);
-	if (not $self->allow_https) {
-	   $self->abort("URI $url is https. The HTTPS protocol is not specified in the OAI-PMH and is not currently supported");
-	}
+        if (not $self->allow_https) {
+            $self->abort("URI $url is https. The HTTPS protocol is not specified in the OAI-PMH and is not currently supported");
+        }
     }
 
     my $request;
@@ -1766,18 +1772,18 @@ sub parse_response {
     # Fail if reponse=undef, else check to see if response is ref to
     # response object or is string
     if (!defined($response) or not ref($response)) {
-	    $self->log->warn("Bad response from server",
-		                 "Bad response to $request_url");
-	    return;
+        $self->log->warn("Bad response from server",
+                         "Bad response to $request_url");
+        return;
     }
     # Unpack the bits we want from response object
-	my $code=$response->code;
+    my $code=$response->code;
     my $content=$response->content;
     # Check return code (if given)
     if ($code and $code=~/^[45]/) {
-	    $self->log->warn("Bad HTTP status code from server: $code",
-		                 "Bad response to $request_url\nServer gave HTTP status code $code");
-	    return;
+        $self->log->warn("Bad HTTP status code from server: $code",
+                         "Bad response to $request_url\nServer gave HTTP status code $code");
+        return;
     }
     #
     # Check content
