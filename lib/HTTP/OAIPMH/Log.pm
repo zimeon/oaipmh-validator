@@ -247,10 +247,10 @@ sub _write_html {
     if ($type eq 'TITLE') {
         print {$fh} '<h3 class="oaipmh-log-title">'.$msg."</h3>\n";
     } else {
-        print {$fh} '<p class="oaipmh-log-line"><span class="oaipmh-log-num">'.
-                    scalar(@{$self->{log}}).'</span> '.
-                    '<span class="oaipmh-log-type">'.$type.'</span> '.
-                    '<span class="oaipmh-log-msg">'.$msg."</span></p>\n";
+        print {$fh} '<div class="oaipmh-log-line oaipmh-log-'.$type.'">'.
+                    '<span class="oaipmh-log-num">'.scalar(@{$self->{log}}).'</span> '.
+                    '<span class="oaipmh-log-type>'.$type.'</span> '.
+                    '<span class="oaipmh-log-msg">'.$msg."</span></div>\n";
     }
 }
 
