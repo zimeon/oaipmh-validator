@@ -5,7 +5,7 @@ HTTP::OAIPMH::Validator - OAI-PMH validator class
 # SYNOPSIS
 
 Validation suite for OAI-PMH data providers that checks for responses
-in accord with OAI-PMH v2 
+in accord with OAI-PMH v2
 [http://www.openarchives.org/OAI/2.0/openarchivesprotocol.htm](http://www.openarchives.org/OAI/2.0/openarchivesprotocol.htm).
 
 Typical use:
@@ -30,13 +30,15 @@ The following instance variables may be set via %args and have read-write
 accessors (via [Class::Accessor::Fast](https://metacpan.org/pod/Class::Accessor::Fast)):
 
     base_url - base URL of the data provdier being validated
+    run_id - UUID identifying the run (will be generated if none supplied)
     protocol_version - protocol version supported
+    admin_email - admin email extracted from Identify response
     granularity - datestamp granularity (defaults to 'days', else 'seconds')
     uses_https - set true if the validator sees an https URL at any stage
 
     debug - set true to add extra debugging output
-    logfh - set to a filehandle to log as validation progesses (might typically use \*STDOUT or \*STDERR)
-    parser - XML DOM parser instance 
+    log - logging object (usually L<HTTP::OAIPMH::Log>)
+    parser - XML DOM parser instance
 
     identify_response - string of identify response (used for registration record)
     earliest_datestamp - value extracted from earliestDatestamp in Identify response
@@ -47,6 +49,10 @@ accessors (via [Class::Accessor::Fast](https://metacpan.org/pod/Class::Accessor:
     example_set_spec - example setSpec ("&set=name") used for tests that require a set
     example_metadata_prefix - example metadataPrefix which defaults to 'oai_dc'
 
+### setup\_run\_id()
+
+Set a UUID for the run\_id.
+
 ### setup\_user\_agent()
 
 Setup [LWP::UserAgent](https://metacpan.org/pod/LWP::UserAgent) for the validator.
@@ -56,11 +62,14 @@ Setup [LWP::UserAgent](https://metacpan.org/pod/LWP::UserAgent) for the validato
 Special purpose "die" routine because tests cannot continue. Logs
 failure and then dies.
 
-### run\_complete\_validation()
+### run\_complete\_validation($skip\_test\_identify)
 
 Run all tests for a complete validation and return true is the data provider passes,
 false otherwise. All actions are logged and may be accessed to provide a report
 (including warnings that do not indicate failure) after the run.
+
+Arguments:
+  $skip\_identify - set true to skip the text\_identify() step
 
 ### summary()
 
@@ -71,17 +80,13 @@ with conversion to HTML by [Text::Markdown](https://metacpan.org/pod/Text::Markd
 
 ### test\_identify()
 
-Check response to an Identify identify request. Returns false if tests cannot
+Check response to an Identify request. Returns false if tests cannot
 continue, true otherwise.
 
-Use form URL, regardless.
-\# Side effects:
-\#  In addition
-\# the mail address of the repository administrator is saved in "email".
-\# Another side effect is that the granularity expected in responses is set.
-\# If there is no successful response to the Identify query, or if there
-\# is a response but it can't be parsed, an error message is printed and
-\# the session is terminated.
+Side effects based on values extracted:
+
+    - $self->admin_email set to email extracted from adminEmail element
+    - $self->granularity set to 'days' or 'seconds'
 
 ### test\_list\_sets()
 
@@ -95,14 +100,14 @@ So keep a list of the setSpec elements.
 
 ### test\_list\_identifiers()
 
-Check response to ListIdentifiers and record an example record id in 
+Check response to ListIdentifiers and record an example record id in
 $self->example\_record\_id to be used in other tests.
 
 If there are no identifiers, but the response is legal, stop the test with
 errors=0, number of verbs checked is three.
 
 As of version 2.0, a metadataPrefix argument is required.  Unfortunately
-we need to call test\_list\_identifiers first in order to get an id for 
+we need to call test\_list\_identifiers first in order to get an id for
 GetRecord, so we simply use oai\_dc.
 
 ### test\_list\_metadata\_formats()
@@ -117,7 +122,7 @@ NOTE:if there are no formats, error will be picked up by getRecord
 
 Try to get record $record\_id in $format.
 
-If either $record\_id or $format are undef then we have an error 
+If either $record\_id or $format are undef then we have an error
 right off the bat. Else make the request and return the
 datestamp of the record.
 
@@ -143,8 +148,8 @@ CGI takes care of URL-encoding the resumption token.
 
 ### test\_expected\_errors($record\_id)
 
-Each one of these requests should get a 400 response in OAI-PHM v1.1, 
-or a 200 response in 2.0, along with a Reason\_Phrase.  Bump error\_count 
+Each one of these requests should get a 400 response in OAI-PHM v1.1,
+or a 200 response in 2.0, along with a Reason\_Phrase.  Bump error\_count
 if this does not hold. Return the number of errorneous responses.
 
 $record\_id is a valid record identifier to be used in tests that require
@@ -158,7 +163,7 @@ There are some additional exception tests for OAI-PMH version 2.0.
 
 ### test\_post\_requests()
 
-Test responses to POST requests. Do both the simplest possible -- the Identify 
+Test responses to POST requests. Do both the simplest possible -- the Identify
 verb -- and a GetRecord request which uses two additional parameters.
 
 ## METHODS CHECKING ELEMENTS WITHIN VERB AND ERROR RESPONSES
@@ -174,7 +179,7 @@ Given the response to one of the OAI verbs, make sure that it it
 going to be validated against the "official" OAI schema, and not
 one that the repository made up for itself.  If the response can't
 be parsed, or if there is no OAI-PMH element, or if the schema is
-incorrect, print an error message and bump the error\_count. 
+incorrect, print an error message and bump the error\_count.
 
 Return true if the schema name and date check out, else return undef
 
@@ -191,12 +196,12 @@ FIXME -- need better checks!
 
 ### error\_elements\_include($error\_elements,$error\_codes)
 
-Determine whether the list of error elements ($error\_elements) includes at least 
+Determine whether the list of error elements ($error\_elements) includes at least
 one of the desired codes. Return string with first matching error code, else
 return false/nothing.
 
 Does a sanity check on $error\_list to check that it is set and has length>0
-before trying to match, so cose calling it can simply do a 
+before trying to match, so cose calling it can simply do a
 getElementsByTagName or similar before caling.
 
 ### check\_error\_response($response)
@@ -217,18 +222,18 @@ if the set of records returned by ListRecords is empty.  This requires
 that we know the earliest date in the repository.  Also check that the
 earliest date matches the specified granularity.
 
-Called only for version 2.0 or greater.  
+Called only for version 2.0 or greater.
 
 Since the Identify response has already been validated, we know
 there is exactly one earliestDatestamp element in the current document.
-Extract this value, check it, and if it looks good then set 
+Extract this value, check it, and if it looks good then set
 $self->earliest\_datestamp and return false.
 
 If there is an error then return string explaining that.
 
 ### parse\_granularity($granularity\_element)
 
-Parse contents of the granularity element of the Identify response. Returns either 
+Parse contents of the granularity element of the Identify response. Returns either
 'days', 'seconds' or nothing on failure. Sets $self->granularity if valid, otherwise
 does not change setting.
 
@@ -237,8 +242,8 @@ http://www.openarchives.org/OAI/openarchivesprotocol.html#Identify
 
 ### get\_datestamp\_granularity($datestamp)
 
-Parse the datestamp supplied and return 'days' if it is valid with granularity 
-of days, 'seconds' if it is valid for seconds granularity, and nothing if it is not 
+Parse the datestamp supplied and return 'days' if it is valid with granularity
+of days, 'seconds' if it is valid for seconds granularity, and nothing if it is not
 valid.
 
 \# FIXME - should add more validation
@@ -256,10 +261,10 @@ value if present, empty if not or if there is some other error.
 
 ### is\_error\_response($details)
 
-Look at the parsed response in $self->doc to see if it is an error response, 
+Look at the parsed response in $self->doc to see if it is an error response,
 parse data and return true if it is.
 
-Returns true (a printable string containing the error messages) if response was a valid 
+Returns true (a printable string containing the error messages) if response was a valid
 OAI\_PMH error response, codes in %$details if a hash reference is passed in.
 
 ### get\_admin\_email()
@@ -268,7 +273,7 @@ Extract admin email from a parsed Identify response in $self->doc).
 Also note that the email target may have been set via form option
 
 Returns the pair of ($email,$error) where $email is the combined
-set of email addresses (comma separated). $error will be undef 
+set of email addresses (comma separated). $error will be undef
 or a string with error message to users.
 
 ### bad\_admin\_email($admin\_email)
@@ -310,7 +315,7 @@ the request should be an HTTP POST request instead of a GET.
 ### parse\_response($request\_url,$response,$xml\_reason)
 
 Attempt to parse the HTTP response $response, examining both the response code
-and then attempting to parse the content as XML. 
+and then attempting to parse the content as XML.
 
 If $xml\_reason is specified then ...FIXME
 
@@ -326,18 +331,28 @@ Escapes characters which have special meanings in HTML
 
 ### one\_year\_before($date)
 
-Assumes properly formatted date, decrements year by one 
+Assumes properly formatted date, decrements year by one
 via string manipulation and returns date.
 
 ### url\_encode($str)
 
 Escape/encode any characters that aren't in the small safe set for URLs
 
+### is\_https\_uri($uri)
+
+Return true if the URI is an https URI, false otherwise.
+
+### sanitize($str)
+
+Return a sanitized version of $str that doesn't contain odd
+characters and it not over 80 chars long. Will have the
+string '(sanitized)' appended if changed.
+
 # SUPPORT
 
-Please report any bugs of questions about validation via the 
-OAI-PMH discussion list at  [https://groups.google.com/d/forum/oai-pmh](https://groups.google.com/d/forum/oai-pmh). 
-Be sure to make it clear that you are talking about the 
+Please report any bugs of questions about validation via the
+OAI-PMH discussion list at  [https://groups.google.com/d/forum/oai-pmh](https://groups.google.com/d/forum/oai-pmh).
+Be sure to make it clear that you are talking about the
 HTTP::OAIPMH::Validator module.
 
 # AUTHORS
@@ -346,21 +361,21 @@ Simeon Warner, Donna Bergmark
 
 # HISTORY
 
-This module is based on an OAI-PMH validator first written by Donna Bergmark 
+This module is based on an OAI-PMH validator first written by Donna Bergmark
 (Cornell University) in 2001-01 for the OAI-PMH validation and registration
-service ([http://www.openarchives.org/data/registerasprovider.html](http://www.openarchives.org/data/registerasprovider.html)). 
+service ([http://www.openarchives.org/data/registerasprovider.html](http://www.openarchives.org/data/registerasprovider.html)).
 Simeon Warner (Cornell University) took over the validator and operation of
 the registration service in 2004-01, and then did a significant tidy/rework
 of the code. That code ran the validation and registration service with
-few changes through 2015-01. Some of the early work on the OAI-PMH validation 
+few changes through 2015-01. Some of the early work on the OAI-PMH validation
 service was supported through NSF award number 0127308.
 
 Code was abstracted into this module 2015-01 by Simeon Warner and will
 be used for the OAI-PMH validation and registration service.
 
-# COPYRIGHT AND LICENSE
+# COPYRIGHT
 
 Copyright 2001..2016 by Simeon Warner, Donna Bergmark.
 
-This library is free software; you can redistribute it and/or modify it under 
+This library is free software; you can redistribute it and/or modify it under
 the same terms as Perl itself.

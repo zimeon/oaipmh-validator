@@ -1,7 +1,7 @@
 # Simple tests for HTTP::OAIPMH::Validator
 use strict;
 
-use Test::More tests => 27;
+use Test::More tests => 32;
 use Try::Tiny;
 use HTTP::OAIPMH::Validator;
 
@@ -96,6 +96,13 @@ is( HTTP::OAIPMH::Validator::url_encode('a b%'), 'a+b%25', "url_encode('a b%')" 
 
 #is_https_uri
 is( HTTP::OAIPMH::Validator::is_https_uri(), '', "is_https_uri()" );
-ok( !HTTP::OAIPMH::Validator::is_https_uri('http://example.com/'), "is_https_uri()" );
-ok( HTTP::OAIPMH::Validator::is_https_uri('https://example.com/'), "is_https_uri()" );
-ok( !HTTP::OAIPMH::Validator::is_https_uri('ftp://example.com/https://'), "is_https_uri()" );
+ok( !HTTP::OAIPMH::Validator::is_https_uri('http://example.com/') );
+ok( HTTP::OAIPMH::Validator::is_https_uri('https://example.com/') );
+ok( !HTTP::OAIPMH::Validator::is_https_uri('ftp://example.com/https://') );
+
+#sanitize
+is( HTTP::OAIPMH::Validator::sanitize(), '', "sanitize()" );
+is( HTTP::OAIPMH::Validator::sanitize(''), '' );
+is( HTTP::OAIPMH::Validator::sanitize('abcd:-120A;._'), 'abcd:-120A;._' );
+is( HTTP::OAIPMH::Validator::sanitize('<>'), '__(sanitized)' );
+is( HTTP::OAIPMH::Validator::sanitize('a'x90), ('a'x80).'(sanitized)' );

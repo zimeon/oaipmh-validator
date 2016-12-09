@@ -7,7 +7,7 @@ HTTP::OAIPMH::Validator - OAI-PMH validator class
 =head1 SYNOPSIS
 
 Validation suite for OAI-PMH data providers that checks for responses
-in accord with OAI-PMH v2 
+in accord with OAI-PMH v2
 L<http://www.openarchives.org/OAI/2.0/openarchivesprotocol.htm>.
 
 Typical use:
@@ -26,7 +26,7 @@ Typical use:
 
 use strict;
 
-our $VERSION = '1.02';
+our $VERSION = '1.03';
 
 use base qw(Class::Accessor::Fast);
 use Data::UUID;
@@ -53,12 +53,13 @@ accessors (via L<Class::Accessor::Fast>):
   base_url - base URL of the data provdier being validated
   run_id - UUID identifying the run (will be generated if none supplied)
   protocol_version - protocol version supported
+  admin_email - admin email extracted from Identify response
   granularity - datestamp granularity (defaults to 'days', else 'seconds')
   uses_https - set true if the validator sees an https URL at any stage
 
   debug - set true to add extra debugging output
   log - logging object (usually L<HTTP::OAIPMH::Log>)
-  parser - XML DOM parser instance 
+  parser - XML DOM parser instance
 
   identify_response - string of identify response (used for registration record)
   earliest_datestamp - value extracted from earliestDatestamp in Identify response
@@ -71,8 +72,8 @@ accessors (via L<Class::Accessor::Fast>):
 
 =cut
 
-HTTP::OAIPMH::Validator->mk_accessors( qw( base_url protocol_version 
-    granularity uses_503 uses_https
+HTTP::OAIPMH::Validator->mk_accessors( qw( base_url protocol_version
+    admin_email granularity uses_503 uses_https
     debug parser run_id ua allow_https content doc save_all_responses
     response_number http_timeout max_retries max_size
     identify_response earliest_datestamp namespace_id set_names
@@ -144,7 +145,7 @@ sub setup_user_agent {
     $ua->timeout($self->http_timeout);              # give responses 10 minutes
     $ua->max_size($self->max_size);      # size limit ##seems to break http://eprints.soton.ac.uk/perl/oai2 [Simeon/2005-06-06]
     $ua->requests_redirectable([]); # we will do redirects manually
-    $ua->agent('OAIPMH_Validator'); # set user agent 
+    $ua->agent('OAIPMH_Validator'); # set user agent
     $ua->from('https://groups.google.com/d/forum/oai-pmh');  # set a default From: address -> direct to google group for dicussion
     $self->ua($ua);
 }
@@ -166,20 +167,23 @@ sub abort {
 }
 
 
-=head3 run_complete_validation()
+=head3 run_complete_validation($skip_test_identify)
 
 Run all tests for a complete validation and return true is the data provider passes,
 false otherwise. All actions are logged and may be accessed to provide a report
 (including warnings that do not indicate failure) after the run.
 
+Arguments:
+  $skip_identify - set true to skip the text_identify() step
+
 =cut
 
 sub run_complete_validation {
     my $self=shift;
-    my ($register,$requestorIP)=@_;
+    my ($skip_identify)=@_;
 
     $self->response_number(1);
-    $self->test_identify;
+    $self->test_identify unless ($skip_identify);
     $self->test_list_sets;
     $self->test_list_identifiers;
 
@@ -202,7 +206,7 @@ sub run_complete_validation {
 
     my ($dateStamp)=$self->test_get_record($self->example_record_id,$self->example_metadata_prefix);
     $self->test_list_records($dateStamp,$self->example_metadata_prefix);
-    
+
     # Check responses to erroneous queries
     $self->test_expected_errors($self->example_record_id);
 
@@ -212,7 +216,7 @@ sub run_complete_validation {
         $self->test_post_requests($self->example_metadata_prefix);
     }
     $self->test_resumption_tokens;
-    
+
     # Getting here with no failures means that the data provider is compliant
     # (there may be warnings which are not counted in num_fail)
     $self->status( $self->log->num_fail==0 ? 'COMPLIANT' : 'FAILED' );
@@ -240,7 +244,7 @@ sub summary {
         } else { #v1.1
             $str.="  * Namespace declared for v1.1 oai-identifiers (the repositoryIdentifier) is $namespace_id\n";
         }
-    }    
+    }
     $str.="  * Total tests passed ".$self->log->num_pass."\n";
     $str.="  * Total warnings ".$self->log->num_warn."\n";
     $str.="  * Uses 503 for flow control\n" if ($self->uses_503);
@@ -255,23 +259,19 @@ sub summary {
 
 =head3 test_identify()
 
-Check response to an Identify identify request. Returns false if tests cannot
+Check response to an Identify request. Returns false if tests cannot
 continue, true otherwise.
 
-Use form URL, regardless.
-# Side effects:
-#  In addition
-# the mail address of the repository administrator is saved in "email".
-# Another side effect is that the granularity expected in responses is set.
-# If there is no successful response to the Identify query, or if there
-# is a response but it can't be parsed, an error message is printed and
-# the session is terminated.
+Side effects based on values extracted:
+
+  - $self->admin_email set to email extracted from adminEmail element
+  - $self->granularity set to 'days' or 'seconds'
 
 =cut
 
 sub test_identify {
     my $self=shift;
-  
+
     my $cantContinue=0;
     $self->log->start("Checking Identify response");
 
@@ -291,7 +291,7 @@ sub test_identify {
         return;
     }
 
-    # Parse the XML response 
+    # Parse the XML response
     unless ($self->parse_response($req,$response)) {
         $self->log->fail("Failed to parse Identify response.\n");
         $self->abort("Failed to parse Identify response from server at base URL '$burl'.\n");
@@ -304,7 +304,7 @@ sub test_identify {
            $oaipmhNode->getNodeType==COMMENT_NODE) {
         $oaipmhNode=$oaipmhNode->getNextSibling();
     }
-    unless (defined $oaipmhNode and $oaipmhNode->getNodeName eq 'OAI-PMH') { 
+    unless (defined $oaipmhNode and $oaipmhNode->getNodeName eq 'OAI-PMH') {
         $self->log->fail("Identify response does not have OAI-PMH as root element! Found node named '".$oaipmhNode->getNodeName."' instead.\n");
         $self->abort("Identify response from server at base URL '$burl' does not have OAI-PMH as root element!\n");
     }
@@ -322,13 +322,14 @@ sub test_identify {
             return;
         }
     }
-  
+
     # Extract admin email and protocol version numbers, check
-    my ($adminEmail,$email_error)=$self->get_admin_email;
+    my ($admin_email,$email_error)=$self->get_admin_email;
     if ($email_error) {
         $self->abort($email_error.", aborting.\n");
         return;
     }
+    $self->admin_email($admin_email);
     $self->check_protocol_version; # bails if not Version 2.0
 
     # URL is valid, Identify response was provided, extract content as string
@@ -344,16 +345,21 @@ sub test_identify {
 
         # $burl is the one given on the form; $baseURL is the one in the XML doc.
         if ($burl eq $baseURL) {
-            $self->log->pass("baseURL supplied matches the Identify response"); 
+            $self->log->pass("baseURL supplied matches the Identify response");
         } else {
-            # report the error, but keep the form URL 
+            # report the error, but keep the form URL
             # (at least it answered Identify!)
-            $self->log->fail("baseURL supplied '$burl' does not match the baseURL in the Identify response '$baseURL'. The baseURL you enter must EXACTLY match the baseURL returned in the Identify response. It must match in case (http://Wibble.org/ does not match http://wibble.org/) and include any trailing slashes etc.", 
-                 "The baseURL supplied\n$burl\ndoes not match the baseURL provided in the Identify response\n$baseURL
-The baseURL you enter must EXACTLY match the baseURL returned in the Identify response. It must match in case (http://Wibble.org/ does not match http://wibble.org/) and include any trailing slashes etc."); 
+            $self->log->fail("baseURL supplied '$burl' does not match the baseURL in the Identify response '$baseURL'. ".
+                 "The baseURL you enter must EXACTLY match the baseURL returned in the Identify response. ".
+                 "It must match in case (http://Wibble.org/ does not match http://wibble.org/) and include ".
+                 "any trailing slashes etc.",
+                 "The baseURL supplied\n$burl\ndoes not match the baseURL provided in the Identify response\n$baseURL ".
+                 "The baseURL you enter must EXACTLY match the baseURL returned in the Identify response. ".
+                 "It must match in case (http://Wibble.org/ does not match http://wibble.org/) and include ".
+                 "any trailing slashes etc.");
             $cantContinue++;
         }
-    } 
+    }
 
     # For Version 2.0, Check for seconds granularity
     if ($self->protocol_version eq '2.0') {
@@ -401,7 +407,7 @@ The baseURL you enter must EXACTLY match the baseURL returned in the Identify re
                 }
             } else {
                 $self->log->fail("Can't find namespace declaration for the oai-identifier description. This must be added as <oai-identifier xmlns=\"http://www.openarchives.org/OAI/2.0/oai-identifier\" ...> (or 1.1), there will likely also be schema validation weeors. Will assume that the oai-identifier is version $oai_id_version for later tests");
-            } 
+            }
             my $repoIds = $oaiIds->getElementsByTagName('repositoryIdentifier');
             if ($repoIds) {
                 my $temp = $repoIds->item(0);
@@ -463,10 +469,10 @@ sub test_list_sets {
     $self->log->start("Checking ListSets response");
     my $req=$self->base_url."?verb=ListSets";
     my $response = $self->make_request_and_validate("ListSets", $req);
-    unless ($response) { 
+    unless ($response) {
         $self->log->fail("Can't check set names");
         return;
-    }  
+    }
 
     unless ($self->parse_response($req,$response)) {
         $self->log->fail("Can't parse response");
@@ -513,14 +519,14 @@ sub test_list_sets {
 
 =head3 test_list_identifiers()
 
-Check response to ListIdentifiers and record an example record id in 
+Check response to ListIdentifiers and record an example record id in
 $self->example_record_id to be used in other tests.
 
 If there are no identifiers, but the response is legal, stop the test with
 errors=0, number of verbs checked is three.
 
 As of version 2.0, a metadataPrefix argument is required.  Unfortunately
-we need to call test_list_identifiers first in order to get an id for 
+we need to call test_list_identifiers first in order to get an id for
 GetRecord, so we simply use oai_dc.
 
 =cut
@@ -542,7 +548,7 @@ sub test_list_identifiers {
     # empty. In that case we should drop the set and try again.
     if ( $set_spec and (! $response or $self->is_no_records_match ) ) {
         $self->log->note("Empty set made ListIdentifiers fail - trying other sets...");
-        my $i=1; 
+        my $i=1;
         my $m = scalar(@{$self->set_names});
         while ($i<$m and not $response ) {
             $set_spec = "&set=".$self->set_names->[$i];
@@ -650,7 +656,7 @@ sub test_list_metadata_formats {
         return;
     }
 
-    if ($self->debug) { 
+    if ($self->debug) {
         $self->log->note("debug: ".$formats->getLength()." formats supported for identifier '$record_id'");
     }
     my $gotDC=0;
@@ -675,7 +681,7 @@ sub test_list_metadata_formats {
 
 Try to get record $record_id in $format.
 
-If either $record_id or $format are undef then we have an error 
+If either $record_id or $format are undef then we have an error
 right off the bat. Else make the request and return the
 datestamp of the record.
 
@@ -695,7 +701,7 @@ sub test_get_record {
         $self->log->fail("Skipping GetRecord test as no items are listed as having metadata available.");
         return;
     }
-  
+
     my $numerr=0; #count up non-fatal errors
 
     my $req = $self->base_url."?verb=GetRecord&identifier=".url_encode($record_id)."&metadataPrefix=".url_encode($format);
@@ -821,7 +827,7 @@ sub test_list_records {
         }
 
         # Now check to make sure that we got back the record for the identifier
-        # $self->example_record_id if there is one specified, else fail that 
+        # $self->example_record_id if there is one specified, else fail that
         # test.
         my $record_id=$self->example_record_id;
         unless ($record_id) {
@@ -881,18 +887,18 @@ CGI takes care of URL-encoding the resumption token.
 
 sub test_resumption_tokens {
     my $self=shift;
-    
+
     $self->log->start("Checking for correct use of resumptionToken (if used)");
-    
+
     my $req = $self->base_url."?verb=ListRecords&metadataPrefix=oai_dc";
     my $response = $self->make_request($req);
-    
+
     # was there a resumption token?
     unless ($self->parse_response($req,$response)) {
         $self->log->fail("Can't parse malformed XML in response to ListRecords request. Cannot complete test for correct use of resumptionToken (if used)");
         return;
     }
-    
+
     my $tokenList = $self->doc->getElementsByTagName('resumptionToken');
     if ( !$tokenList or $tokenList->getLength()==0 ) {
         $self->log->pass("resumptionToken not used");
@@ -901,12 +907,12 @@ sub test_resumption_tokens {
     if ( $tokenList->getLength()>1 ) {
         $self->log->fail("More than one resumptionToken in response!");
         return;
-    } 
-    
+    }
+
     # Dig out the resumption token from the document
     my $tokenElement = $tokenList->item(0);
-    
-    # Try getting the resumption token, $token will be will be undefined 
+
+    # Try getting the resumption token, $token will be will be undefined
     # unless the element has content
     my $token = $tokenElement->getFirstChild;
     my $tokenString;
@@ -918,8 +924,8 @@ sub test_resumption_tokens {
            "Empty resumption token in response to $req There should never be an empty resumptionToken in response to a request without a resumptionToken argument");
        return;
     }
-    
-    # If there us a 'cursor' value given then check that it is 
+
+    # If there us a 'cursor' value given then check that it is
     # correct. It must have the value 0 in the first response
     my $usingCursor=0;
     if (my $cursor=$tokenElement->getAttribute('cursor')) {
@@ -930,9 +936,9 @@ sub test_resumption_tokens {
             $self->log->fail("A cursor value was supplied with the resumptionToken but it did not have the correct value zero for the first response. The value was '$cursor'.");
         }
     }
-    
+
     $self->log->note("Got resumptionToken ".$tokenString);
-    
+
     # Try using the resumption token.  Before including a resumptionToken in
     # the URL of a subsequent request, we must encode all special characters
     # getData in this version of XML::DOM expands entitities
@@ -948,17 +954,17 @@ sub test_resumption_tokens {
                          "Response to this request is not valid XML: $req");
        return;
     }
-    
+
     my $errorList = $self->doc->getElementsByTagName('error');
     if ( $errorList and $errorList->getLength() > 0 ) {
         $self->log->fail("Response to request using resumptionToken was an error code",
                "Response to the request: $req was an error code!\n".$response->content()."\n");
         return;
     }
-    
-    ###FIXME: put in test for cursor again, should be number of items returned in the 
+
+    ###FIXME: put in test for cursor again, should be number of items returned in the
     ###FIXME: first response [Simeon/2005-10-11]
-    
+
     $self->log->pass("Resumption tokens appear to work");
 }
 
@@ -967,8 +973,8 @@ sub test_resumption_tokens {
 
 =head3 test_expected_errors($record_id)
 
-Each one of these requests should get a 400 response in OAI-PHM v1.1, 
-or a 200 response in 2.0, along with a Reason_Phrase.  Bump error_count 
+Each one of these requests should get a 400 response in OAI-PHM v1.1,
+or a 200 response in 2.0, along with a Reason_Phrase.  Bump error_count
 if this does not hold. Return the number of errorneous responses.
 
 $record_id is a valid record identifier to be used in tests that require
@@ -984,7 +990,7 @@ sub test_expected_errors {
 
     my @request_list = (
         [ 'junk', [ 'badVerb' ], '', '' ],
-        [ 'verb=junk', [ 'badVerb' ], '', '' ], 
+        [ 'verb=junk', [ 'badVerb' ], '', '' ],
         [ 'verb=GetRecord&metadataPrefix=oai_dc', [ 'badArgument' ], '', '' ],
         [ 'verb=GetRecord&identifier='.$record_id, [ 'badArgument' ], '', '' ],
         [ 'verb=GetRecord&identifier=invalid"id&metadataPrefix=oai_dc', [ 'badArgument','idDoesNotExist' ], 'An XML parsing error may be due to incorrectly including the invalid identifier in the <request> element of your XML error response; only valid arguments should be included. A response that includes <request verb="GetRecord" identifier="invalid"id" metadataPrefix="oai_dc">..baseURL..</request> is not well-formed XML because of the quotation mark (") in the identifier.', 'Either the badArgument or idDoesNotExist error codes would be appropriate to report this case.' ],
@@ -1006,12 +1012,12 @@ sub test_expected_errors {
 
         my $response=$self->make_request($req);
 
-        # TBD: $response->status_line should also be checked? see output from 
+        # TBD: $response->status_line should also be checked? see output from
         # physnet.uni-oldenburg.de/oai/oai.php
         if ($self->protocol_version eq "1.1") {
             if ($response->code ne "400") {
                 $self->log->note("Invalid requests which failed to return 400:") if $n == 0;
-                $n++; 
+                $n++;
                 $self->log->fail("Expected 400 from: $request_string");
             }
         } elsif ($self->protocol_version eq "2.0") {
@@ -1055,24 +1061,24 @@ There are some additional exception tests for OAI-PMH version 2.0.
 sub test_expected_v2_errors {
     my $self=shift;
     my ($earliest_datestamp,$metadata_prefix)=@_;
-    
+
     $self->log->start("Checking for version 2.0 specific exceptions");
-    
+
     my $too_early_date=one_year_before($earliest_datestamp);
-    
+
     # format of entries: [ request_string, [error_codes_accepable], resaon ]
     my @request_list = (
-        [ "verb=ListRecords&metadataPrefix=".url_encode($metadata_prefix)."&from=2002-02-05&until=2002-02-06T05:35:00Z", ['badArgument'], 
+        [ "verb=ListRecords&metadataPrefix=".url_encode($metadata_prefix)."&from=2002-02-05&until=2002-02-06T05:35:00Z", ['badArgument'],
           'The request has different granularities for the from and until parameters.' ],
-        [ "verb=ListRecords&metadataPrefix=".url_encode($metadata_prefix)."&until=$too_early_date" , ['noRecordsMatch'], 
+        [ "verb=ListRecords&metadataPrefix=".url_encode($metadata_prefix)."&until=$too_early_date" , ['noRecordsMatch'],
           'The request specified a date one year before the earliestDatestamp given in the Identify response. '.
           'There should therefore not be any records with datestamps on or before this date and a noRecordsMatch '.
           'error code should be returned.' ]
     );
-    
+
     foreach my $rrr ( @request_list ) {
         my ($request_string,$error_codes,$reason)=@$rrr;
-        
+
         my $req=$self->base_url."?$request_string";
         my $response = $self->make_request($req);
         # parse the response content for the desired error code
@@ -1099,17 +1105,17 @@ sub test_expected_v2_errors {
 
 =head3 test_post_requests()
 
-Test responses to POST requests. Do both the simplest possible -- the Identify 
+Test responses to POST requests. Do both the simplest possible -- the Identify
 verb -- and a GetRecord request which uses two additional parameters.
 
 =cut
 
 sub test_post_requests {
     my $self=shift;
-    my ($metadata_prefix)=@_; 
-    
+    my ($metadata_prefix)=@_;
+
     $self->log->start("Checking that HTTP POST requests are handled correctly");
- 
+
     $self->test_post_request(1,{verb => "Identify"});
 
     my $record_id=$self->example_record_id;
@@ -1156,7 +1162,7 @@ Check responseDate for being in UTC format
 sub check_response_date {
     my $self=shift;
     my ($req, $doc) = @_;
-    
+
     my $elements = $self->doc->getElementsByTagName('responseDate');
     # assume rest of validity already checked, just take first
     my $item;
@@ -1181,7 +1187,7 @@ Given the response to one of the OAI verbs, make sure that it it
 going to be validated against the "official" OAI schema, and not
 one that the repository made up for itself.  If the response can't
 be parsed, or if there is no OAI-PMH element, or if the schema is
-incorrect, print an error message and bump the error_count. 
+incorrect, print an error message and bump the error_count.
 
 Return true if the schema name and date check out, else return undef
 
@@ -1190,21 +1196,21 @@ Return true if the schema name and date check out, else return undef
 sub check_schema_name {
     my $self=shift;
     my ($req, $doc) = @_;
-    
-    my $namespace = 'http://www.openarchives.org/OAI/2.0/'; 
+
+    my $namespace = 'http://www.openarchives.org/OAI/2.0/';
     my $location = 'http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd';
-    
+
     my $elements = $self->doc->getElementsByTagName('OAI-PMH');   #NodeList
     unless ( $elements->getLength() > 0 ) {
         $self->log->fail("Response to $req did not contain a OAI-PMH element",
-               "Response to $req did not contain an OAI-PMH element\n");
+                         "Response to $req did not contain an OAI-PMH element\n");
         return(0);
     }
     my $attributes = $elements->item(0)->getAttributes;  #Node->NamedNodeMap
     my $attr = $attributes->getNamedItem('xsi:schemaLocation');  #Node
     unless ( $attr ) {
         $self->log->fail("No xsi:schemaLocation attribute for the OAI-PMH element was found, expected xsi:schemaLocation=\"$namespace $location\"",
-               "No xsi:schemaLocation attribute for the OAI-PMH element was found. Expected: xsi:schemaLocation=\"$namespace $location\"\n");
+                         "No xsi:schemaLocation attribute for the OAI-PMH element was found. Expected: xsi:schemaLocation=\"$namespace $location\"\n");
         return(0);
     }
     $attr = $attributes->getNamedItem('xsi:schemaLocation');     #Node
@@ -1225,7 +1231,7 @@ sub check_schema_name {
 Extract the protocol version being used from the Identify response, check that it is
 valid and then abort unless 2.0.
 
-=cut 
+=cut
 
 sub check_protocol_version {
     my $self=shift;
@@ -1271,12 +1277,12 @@ sub is_verb_response {
 
 =head3 error_elements_include($error_elements,$error_codes)
 
-Determine whether the list of error elements ($error_elements) includes at least 
+Determine whether the list of error elements ($error_elements) includes at least
 one of the desired codes. Return string with first matching error code, else
 return false/nothing.
 
 Does a sanity check on $error_list to check that it is set and has length>0
-before trying to match, so cose calling it can simply do a 
+before trying to match, so cose calling it can simply do a
 getElementsByTagName or similar before caling.
 
 =cut
@@ -1330,11 +1336,11 @@ if the set of records returned by ListRecords is empty.  This requires
 that we know the earliest date in the repository.  Also check that the
 earliest date matches the specified granularity.
 
-Called only for version 2.0 or greater.  
+Called only for version 2.0 or greater.
 
 Since the Identify response has already been validated, we know
 there is exactly one earliestDatestamp element in the current document.
-Extract this value, check it, and if it looks good then set 
+Extract this value, check it, and if it looks good then set
 $self->earliest_datestamp and return false.
 
 If there is an error then return string explaining that.
@@ -1343,31 +1349,37 @@ If there is an error then return string explaining that.
 
 sub get_earliest_datestamp {
     my $self=shift;
-    
+
     my $earliest = $self->doc->getElementsByTagName('earliestDatestamp');
     my $el = $earliest->item(0);
     return("Can't get earliestDatestamp element from Identify response.") unless ($el);
     return("earliestDatestamp element is empty in Identify response.") unless ($el->getFirstChild);
-    
+
     my $error='';
     my $earliest_datestamp = $el->getFirstChild->getData;
     $self->log->note("Earliest datestamp in repository is $earliest_datestamp") if $self->debug;
+
     $earliest_datestamp =~ /^([0-9]{4})-([0-9][0-9])-([0-9][0-9])(.*)$/;
-    
     if ($1 eq '' || $2 eq '' || $3 eq '') {
         $error="is not in ISO8601 format";
     } elsif ( $4 eq '' and $self->granularity eq 'seconds') {
-        $error="must have seconds granularity (format YYYY-MM-DDThh:mm:ssZ) to match the granularity for the repository. The granularity has been set to seconds by the granularity element of the Identify response.\n";
+        $error="must have seconds granularity (format YYYY-MM-DDThh:mm:ssZ) to match ".
+               "the granularity for the repository. The granularity has been set to seconds ".
+               "by the granularity element of the Identify response.\n";
     } elsif ( $4 ne '' and $self->granularity eq 'days') {
-        $error="must have days granularity (format YYYY-MM-DD) to match the granularity for the repository. The granularity has been set to days by the granularity element of the Identify response (or that element is bad/missing).\n";
+        $error="must have days granularity (format YYYY-MM-DD) to match the granularity for ".
+               "the repository. The granularity has been set to days by the granularity ".
+               "element of the Identify response (or that element is bad/missing).\n";
     } elsif ( $self->granularity eq 'seconds' and $4 !~ /^T\d\d:\d\d:\d\d(\.\d+)?Z$/ ) {
-        $error="does not have the correct format for the time part of the UTCdatetime. The overall format must be YYYY-MM-DDThh:mm:ssZ.\n";
+        $error="does not have the correct format for the time part of the UTCdatetime. The ".
+               "overall format must be YYYY-MM-DDThh:mm:ssZ.\n";
     }
     if ($error) {
-        # FIXME - should sanitize $earliest_datestamp
-        return("The earliestDatestamp in the identify response ($earliest_datestamp) $error");
+        # Sanitize for error message
+        return("The earliestDatestamp in the identify response (".
+               sanitize($earliest_datestamp).") $error");
     } else {
-        $self->earliest_datestamp( $earliest_datestamp );
+        $self->earliest_datestamp($earliest_datestamp);
         return;
     }
 }
@@ -1375,7 +1387,7 @@ sub get_earliest_datestamp {
 
 =head3 parse_granularity($granularity_element)
 
-Parse contents of the granularity element of the Identify response. Returns either 
+Parse contents of the granularity element of the Identify response. Returns either
 'days', 'seconds' or nothing on failure. Sets $self->granularity if valid, otherwise
 does not change setting.
 
@@ -1392,7 +1404,7 @@ sub parse_granularity {
         return;
     } elsif ($gran->getLength>1) {
         $self->log->fail("Multiple granularity elements");
-        return;      
+        return;
     }
     #schema validation guarantees that there is a spec here
     my $el=$gran->item(0)->getFirstChild->getData;
@@ -1401,7 +1413,7 @@ sub parse_granularity {
         return($self->granularity);
     } elsif ($el eq 'YYYY-MM-DDThh:mm:ssZ') {
         $self->granularity('seconds');
-        return($self->granularity);    
+        return($self->granularity);
     } else {
         $self->log->fail("Bad value for the granularity element '$el', must be either YYYY-MM-DD or YYYY-MM-DDThh:mm:ssZ");
         return;
@@ -1411,8 +1423,8 @@ sub parse_granularity {
 
 =head3 get_datestamp_granularity($datestamp)
 
-Parse the datestamp supplied and return 'days' if it is valid with granularity 
-of days, 'seconds' if it is valid for seconds granularity, and nothing if it is not 
+Parse the datestamp supplied and return 'days' if it is valid with granularity
+of days, 'seconds' if it is valid for seconds granularity, and nothing if it is not
 valid.
 
 # FIXME - should add more validation
@@ -1426,9 +1438,9 @@ sub get_datestamp_granularity {
         return 'days' if ($2>=1 and $2<=12 and $3>=1 and $3<=31);
     } elsif ($datestamp=~/^(\d\d\d\d)-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)(\.\d+)?Z$/) {
         return 'seconds' if ($2>=1 and $2<=12 and $3>=1 and $3<=31 and $4<24 and $5<60);
-    } 
+    }
     return;
-} 
+}
 
 
 =head3 is_no_records_match
@@ -1437,7 +1449,7 @@ Returns true if the current document contains and error code element with the co
 
 ### FIXME - should be merged into an extended is_error_response
 
-=cut 
+=cut
 
 sub is_no_records_match {
     my $self=shift;
@@ -1475,10 +1487,10 @@ sub get_resumption_token {
 
 =head3 is_error_response($details)
 
-Look at the parsed response in $self->doc to see if it is an error response, 
+Look at the parsed response in $self->doc to see if it is an error response,
 parse data and return true if it is.
 
-Returns true (a printable string containing the error messages) if response was a valid 
+Returns true (a printable string containing the error messages) if response was a valid
 OAI_PMH error response, codes in %$details if a hash reference is passed in.
 
 =cut
@@ -1498,7 +1510,7 @@ sub is_error_response {
                 # Warn about no content unless it is the special case of noSetHierarchy
                 # where the error code really is sufficient
                 unless  ($code eq 'noSetHierarchy') {
-                    $self->log->warn("No human readable message included in error element for $code error, this is discouraged"); 
+                    $self->log->warn("No human readable message included in error element for $code error, this is discouraged");
                 }
                 $details->{$code}='[NO MESSAGE RETURNED]';
                 $msg.="[$code] ";
@@ -1520,7 +1532,7 @@ Extract admin email from a parsed Identify response in $self->doc).
 Also note that the email target may have been set via form option
 
 Returns the pair of ($email,$error) where $email is the combined
-set of email addresses (comma separated). $error will be undef 
+set of email addresses (comma separated). $error will be undef
 or a string with error message to users.
 
 =cut
@@ -1538,7 +1550,7 @@ sub get_admin_email {
             my $e=$adminEmailElements->item($i)->getFirstChild->getData;
             if ($e=~s/mailto://g) {
                 $self->log->warn("Stripped mailto: prefix from adminEmail address, this should not be included.");
-            }  
+            }
             if (my $msg=$self->bad_admin_email($e)) {
                 return($msg);
             }
@@ -1619,18 +1631,18 @@ sub make_request_and_validate {
         $self->log->fail("Server failed to respond to the $verb request (HTTP header values: status=$status, age=$age, lifetime=$lifetime, is fresh:=$is_fresh)\n");
         return;
     }
-    
+
     unless ($self->parse_response($req, $response)) {
         $self->log->fail("Failed to parse response",
                "Failed to parse response to $req");
         return;
     }
-    
+
     # Check that the responseDate is in UTC format
     $self->check_response_date($req,$self->doc);
     # Check that the response refers to the "official" OAI schema
     $self->check_schema_name($req,$self->doc);
-    
+
     return($response);
 }
 
@@ -1662,7 +1674,7 @@ sub make_request {
         # Sort keys in alpha order for consistent behavior
         foreach my $k (sort keys(%$post_data)) {
             my $v=$post_data->{$k};
-            $content_msg.="$k:$v "; 
+            $content_msg.="$k:$v ";
         }
         $self->log->request($url,'POST',$content_msg);
         $request = POST($url,'Content'=>$post_data);
@@ -1670,7 +1682,7 @@ sub make_request {
         $self->log->request($url,'GET');
         $request = GET($url);
     }
-    my $response;  
+    my $response;
     my $tries=0;
     my $try_again = 1;
     while  ( $try_again ) {
@@ -1687,7 +1699,7 @@ sub make_request {
             $self->{response_number}++;
         }
         $tries++;
-        if ($tries > $self->max_retries) { 
+        if ($tries > $self->max_retries) {
             $self->abort("Too many 503 Retry-After or 302 Redirect responses received in a row");
         }
         #
@@ -1712,7 +1724,7 @@ sub make_request {
                 }
             } else {
                 $self->log->warn("503 response without Retry-After time, will wait 10s");
-                sleep 10;   
+                sleep 10;
             }
         } elsif ($response->code eq '302') {
             # 302 (Found) redirect
@@ -1737,7 +1749,7 @@ sub make_request {
             $try_again=0;
         }
     }
-    # Check for oversize limit (indicated by X-Content-Range header) 
+    # Check for oversize limit (indicated by X-Content-Range header)
     if (defined $response->header('X-Content-Range')) {
         $self->log->fail("Response to <$url> exceeds maximum size limit (".$self->max_size." bytes), discarded. ".
                          "While this limit is set only in this validation program you should not use excessively ".
@@ -1754,7 +1766,7 @@ sub make_request {
 =head3 parse_response($request_url,$response,$xml_reason)
 
 Attempt to parse the HTTP response $response, examining both the response code
-and then attempting to parse the content as XML. 
+and then attempting to parse the content as XML.
 
 If $xml_reason is specified then ...FIXME
 
@@ -1826,7 +1838,7 @@ sub html_escape {
 
 =head3 one_year_before($date)
 
-Assumes properly formatted date, decrements year by one 
+Assumes properly formatted date, decrements year by one
 via string manipulation and returns date.
 
 =cut
@@ -1865,11 +1877,31 @@ sub is_https_uri {
 }
 
 
+=head3 sanitize($str)
+
+Return a sanitized version of $str that doesn't contain odd
+characters and it not over 80 chars long. Will have the
+string '(sanitized)' appended if changed.
+
+=cut
+
+sub sanitize {
+    my ($str)=@_;
+    my $out=$str;
+    $out=~s/[^\w\-:;.!@#%^*\(\) ]/_/g;
+    $out=substr($out,0,80);
+    if ($out ne $str) {
+        $out.='(sanitized)';
+    }
+    return($out);
+}
+
+
 =head1 SUPPORT
 
-Please report any bugs of questions about validation via the 
-OAI-PMH discussion list at  L<https://groups.google.com/d/forum/oai-pmh>. 
-Be sure to make it clear that you are talking about the 
+Please report any bugs of questions about validation via the
+OAI-PMH discussion list at  L<https://groups.google.com/d/forum/oai-pmh>.
+Be sure to make it clear that you are talking about the
 HTTP::OAIPMH::Validator module.
 
 =head1 AUTHORS
@@ -1878,13 +1910,13 @@ Simeon Warner, Donna Bergmark
 
 =head1 HISTORY
 
-This module is based on an OAI-PMH validator first written by Donna Bergmark 
+This module is based on an OAI-PMH validator first written by Donna Bergmark
 (Cornell University) in 2001-01 for the OAI-PMH validation and registration
-service (L<http://www.openarchives.org/data/registerasprovider.html>). 
+service (L<http://www.openarchives.org/data/registerasprovider.html>).
 Simeon Warner (Cornell University) took over the validator and operation of
 the registration service in 2004-01, and then did a significant tidy/rework
 of the code. That code ran the validation and registration service with
-few changes through 2015-01. Some of the early work on the OAI-PMH validation 
+few changes through 2015-01. Some of the early work on the OAI-PMH validation
 service was supported through NSF award number 0127308.
 
 Code was abstracted into this module 2015-01 by Simeon Warner and will
@@ -1894,7 +1926,7 @@ be used for the OAI-PMH validation and registration service.
 
 Copyright 2001..2016 by Simeon Warner, Donna Bergmark.
 
-This library is free software; you can redistribute it and/or modify it under 
+This library is free software; you can redistribute it and/or modify it under
 the same terms as Perl itself.
 
 =cut
