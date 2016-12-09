@@ -11,8 +11,8 @@ as an array of entries in $obj->log, where each entry is itself an array
 where the first element is the type (indicated by a string) and then additional
 information.
 
-Also supports output of a text summary (markdown) and/or JSON data 
-during operation if the $obj->filehandles array is set to include one 
+Also supports output of a text summary (markdown) and/or JSON data
+during operation if the $obj->filehandles array is set to include one
 or more filehandle and types for output.
 
 Example use:
@@ -32,6 +32,7 @@ Example use:
 =cut
 
 use strict;
+use CGI qw(escapeHTML);
 use JSON qw(encode_json);
 use base qw(Class::Accessor::Fast);
 HTTP::OAIPMH::Log->mk_accessors( qw(log filehandles num_pass num_fail num_warn) );
@@ -40,8 +41,8 @@ HTTP::OAIPMH::Log->mk_accessors( qw(log filehandles num_pass num_fail num_warn) 
 
 =head3 new(%args)
 
-Create new HTTP::OAIPMH::Log and optionally set values for any of the 
-attributes. All attributes also have accessors provided via 
+Create new HTTP::OAIPMH::Log and optionally set values for any of the
+attributes. All attributes also have accessors provided via
 L<Class::Accessor::Fast>:
 
   log - internal data structure for log messages (array of arrays)
@@ -64,14 +65,14 @@ sub new {
               @_};
     bless($self, $class);
     return($self);
-}    
+}
 
 
 =head3 fh($fh, $type)
 
-Add a filehandle to the logger. If $type is set equal to 'json' then 
-JSON will be written, otherwise text output in markdown format. The
-call is ignore unless $fh is True.
+Add a filehandle to the logger. If $type is set equal to 'json' then
+JSON will be written, els if 'html then HTML will be written, otherwise
+text is output in markdown format. The call is ignored unless $fh is True.
 
 =cut
 
@@ -87,7 +88,7 @@ sub fh {
 
 =head3 num_total()
 
-Return the total number of pass and fail events recorded. Note 
+Return the total number of pass and fail events recorded. Note
 that this doesn't include warnings.
 
 =cut
@@ -191,48 +192,66 @@ sub pass {
 # Used by all the pass, fail, warn, start methods.
 #
 # In addition to recording the data in $self->{log} array, will
-# write output in markdown or JSON to each of the filehandles in
-# $self->filehandles.
+# write output in markdown, HTML or JSON to each of the filehandles
+# in $self->filehandles.
 #
 sub _add {
     my $self=shift;
     push( @{$self->{log}}, [@_] );
     if (scalar($self->filehandles)>0) {
         my $type = shift(@_);
-	my $md_prefix = '';
-	my $md_suffix = "\n";
-	my $msg = '';
+        my $md_prefix = '';
+        my $md_suffix = "\n";
+        my $msg = '';
         if ($type eq 'TITLE') {
-	    $md_prefix = "\n### ";
-	    $md_suffix = "\n\n";
-	    $msg = join(' ',@_);
+            $md_prefix = "\n### ";
+            $md_suffix = "\n\n";
+            $msg = join(' ',@_);
         } else {
             $md_prefix = sprintf("%-8s ",$type.':');
-	    if ($type eq 'WARN' or $type eq 'FAIL') {
-	        # only $msg not $longmsg
+            if ($type eq 'WARN' or $type eq 'FAIL') {
+                # only $msg not $longmsg
                 $msg = shift(@_);
             } else {
-	        $msg = join(' ',@_);
-	    }
+                $msg = join(' ',@_);
+            }
         }
-	foreach my $fhd (@{$self->filehandles}) {
-	    if ($fhd->{'type'} eq 'json') {
-	        $self->_write_json($fhd->{'fh'},$type,$msg);
-	    } else {
-	        $self->_write_md($fhd->{'fh'},$md_prefix,$msg,$md_suffix);
-	    }
+        foreach my $fhd (@{$self->filehandles}) {
+            if ($fhd->{'type'} eq 'json') {
+                $self->_write_json($fhd->{'fh'},$type,$msg);
+            } elsif ($fhd->{'type'} eq 'html') {
+                $self->_write_html($fhd->{'fh'},$type,$msg);
+            } else {
+                $self->_write_md($fhd->{'fh'},$md_prefix,$msg,$md_suffix);
+            }
         }
     }
     return(1);
 }
 
-# _write_md($fh, @msg) - Write a markdown log entry tp $fh, combining
+# _write_md($fh, @msg) - Write a markdown log entry to $fh, combining
 # all @msg by simple concatenation to make the string
 #
 sub _write_md {
     my $self=shift;
     my $fh=shift;
     print {$fh} join('',@_);
+}
+
+# _write_html($fh,$type,$msg) - Write an HTML log entry to $fh, using
+# classes to allow CSS styling
+#
+sub _write_html {
+    my $self=shift;
+    my ($fh,$type,$msg)=@_;
+    if ($type eq 'TITLE') {
+        print {$fh} '<h3 class="oaipmh-log-title">'.$msg."</h3>\n";
+    } else {
+        print {$fh} '<p class="oaipmh-log-line"><span class="oaipmh-log-num">'.
+                    scalar(@{$self->{log}}).'</span> '.
+                    '<span class="oaipmh-log-type">'.$type.'</span> '.
+                    '<span class="oaipmh-log-msg">'.$msg."</span></p>\n";
+    }
 }
 
 # _write_json($fh,$type,$msg) - Write a one-line JSON object to

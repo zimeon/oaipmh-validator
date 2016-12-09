@@ -9,8 +9,9 @@ as an array of entries in $obj->log, where each entry is itself an array
 where the first element is the type (indicated by a string) and then additional
 information.
 
-Also supports output of a text summary during operation if $obj->fh is 
-set to a filehandle for output.
+Also supports output of a text summary (markdown) and/or JSON data
+during operation if the $obj->filehandles array is set to include one
+or more filehandle and types for output.
 
 Example use:
 
@@ -30,8 +31,8 @@ Example use:
 
 ### new(%args)
 
-Create new HTTP::OAIPMH::Log and optionally set values for any of the 
-attributes. All attributes also have accessors provided via 
+Create new HTTP::OAIPMH::Log and optionally set values for any of the
+attributes. All attributes also have accessors provided via
 [Class::Accessor::Fast](https://metacpan.org/pod/Class::Accessor::Fast):
 
     log - internal data structure for log messages (array of arrays)
@@ -40,9 +41,15 @@ attributes. All attributes also have accessors provided via
     num_fail - number of fail messages
     num_warn - number of warn messages
 
+### fh($fh, $type)
+
+Add a filehandle to the logger. If $type is set equal to 'json' then
+JSON will be written, els if 'html then HTML will be written, otherwise
+text is output in markdown format. The call is ignored unless $fh is True.
+
 ### num\_total()
 
-Return the total number of pass and fail events recorded. Note 
+Return the total number of pass and fail events recorded. Note
 that this doesn't include warnings.
 
 ### start($title)
