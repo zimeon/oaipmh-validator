@@ -249,7 +249,7 @@ sub _write_html {
     } else {
         print {$fh} '<div class="oaipmh-log-line oaipmh-log-'.$type.'">'.
                     '<span class="oaipmh-log-num">'.scalar(@{$self->{log}}).'</span> '.
-                    '<span class="oaipmh-log-type>'.$type.'</span> '.
+                    '<span class="oaipmh-log-type">'.$type.'</span> '.
                     '<span class="oaipmh-log-msg">'.$msg."</span></div>\n";
     }
 }
