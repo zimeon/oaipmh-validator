@@ -76,9 +76,10 @@ HTTP::OAIPMH::Validator->mk_accessors( qw( base_url protocol_version
     admin_email granularity uses_503 uses_https
     debug parser run_id ua allow_https content doc save_all_responses
     response_number http_timeout max_retries max_size
+    protocol guidelines
     identify_response earliest_datestamp namespace_id set_names
     example_record_id example_set_spec example_metadata_prefix
-    log status protocol
+    log status
     ) );
 
 sub new {
