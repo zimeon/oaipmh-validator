@@ -97,7 +97,7 @@ sub new {
         'parser' => XML::DOM::Parser->new(),
         'run_id' => undef,
         'ua' => undef,
-        'allow_https' => 0,         # allow https redirects
+        'allow_https' => 0,         # allow https URIs
         'content' => undef,         # current unparsed response content
         'doc' => undef,             # current parsed xml document
         'save_all_responses' => 0,  # set True to save all HTTP responses
@@ -246,10 +246,10 @@ sub summary {
             $str.="  * Namespace declared for v1.1 oai-identifiers (the repositoryIdentifier) is $namespace_id\n";
         }
     }
-    $str.="  * Total tests passed ".$self->log->num_pass."\n";
-    $str.="  * Total warnings ".$self->log->num_warn."\n";
     $str.="  * Uses 503 for flow control\n" if ($self->uses_503);
-    $str.="  * Uses redirects to https URIs (not specified in protocol)\n" if ($self->uses_https);
+    $str.="  * Uses https URIs (not specified in protocol)\n" if ($self->uses_https);
+    $str.="  * Total tests passed: ".$self->log->num_pass."\n";
+    $str.="  * Total warnings: ".$self->log->num_warn."\n";
     $str.="  * Total error count: ".$self->log->num_fail."\n";
     $str.="  * Validation status: ".($self->status || 'unknown')."\n";
     return($str);
