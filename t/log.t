@@ -9,10 +9,10 @@ my $log = HTTP::OAIPMH::Log->new;
 ok( $log, "created new Log object" );
 
 # add loggers
-is( $log->fh, undef, "empty fh" );
-is( $log->fh(\*STDERR), \*STDERR, "stderr fh" );
-is( $log->fh(undef), undef, "empty fh" );
-is( $log->fh(\*STDOUT), \*STDOUT, "stderr fh, json" );
+is( $log->fh, 0, "empty call" );
+is( $log->fh([\*STDERR]), 1, "stderr fh" );
+is( $log->fh, 1, "empty call, 1 set" );
+is( $log->fh([\*STDERR],[\*STDOUT, 'json']), 2, "stderr fh, json" );
 is( scalar(@{$log->filehandles}), 2, "2 loggers");
 
 # logging
@@ -57,21 +57,21 @@ my $fh;
 $log = HTTP::OAIPMH::Log->new;
 ok( $log, "created new Log object" );
 $str=''; open( $fh, '>', \$str);
-is( $log->fh($fh), $fh, "connected out to str" );
+is( $log->fh([$fh]), 1, "connected out to str" );
 ok( $log->_add("ONE","SOME"), "_add ONE SOME" );
 is( $str, "ONE:     SOME\n", "one line written" );
 
 $log = HTTP::OAIPMH::Log->new;
 ok( $log, "created new Log object" );
 $str=''; open($fh, '>', \$str); 
-is( $log->fh($fh), $fh, "connected out to str" );
+is( $log->fh([$fh]), 1, "connected out to str" );
 ok( $log->_add("TITLE","bingo"), "_add TITLE BINGO" );
 is( $str, "\n### bingo\n\n", "bingo line written" );
 
 $log = HTTP::OAIPMH::Log->new;
 ok( $log, "created new Log object" );
 $str=''; open($fh, '>', \$str); 
-is( $log->fh($fh), $fh, "connected out to str" );
+is( $log->fh([$fh]), 1, "connected out to str" );
 ok( $log->_add("WARN","short","long"), "_add WARN short long" );
 is( $str, "WARN:    short\n", "WARN line written without long" );
 ok( $log->_add("FAIL","short","very very very long"), "_add FAIL short long" );
@@ -80,7 +80,7 @@ is( $str, "WARN:    short\nFAIL:    short\n", "FAIL line written without long" )
 $log = HTTP::OAIPMH::Log->new;
 ok( $log, "created new Log object" );
 $str=''; open($fh, '>', \$str); 
-is( $log->fh($fh), $fh, "connected out to str" );
+is( $log->fh([$fh]), 1, "connected out to str" );
 ok( $log->_add("NOTE","one","two","three"), "_add NOTE one two three" );
 is( $str, "NOTE:    one two three\n", "NOTE line written with all elements" );
 
@@ -90,7 +90,7 @@ my $fh;
 $log = HTTP::OAIPMH::Log->new;
 ok( $log, "created new Log object" );
 $str=''; open( $fh, '>', \$str);
-is( $log->fh($fh,'json'), $fh, "connected out to str, type json" );
+is( $log->fh([$fh,'json']), 1, "connected out to str, type json" );
 ok( $log->_add("ONE","SOME"), "_add ONE SOME" );
 my $j = decode_json($str);
 is( $j->{'num'}, 1, 'num==1' );

@@ -74,14 +74,19 @@ Set the list of filehandle specs that will be written to, clearing
 any that already exist. Each entry in the @fhspec array should be a 
 arrayref to ($fh,$type) used to call $self->add_fh($fh,$type).
 
+Returns number of filehandles in the list to write to.
+
 =cut
 
 sub fh {
     my $self=shift;
-    $self->{filehandles} = [];
-    foreach my $fhspec (@_) {
-	$self->add_fh(@$fhspec);
+    if (@_) {
+	$self->{filehandles} = [];
+	foreach my $fhspec (@_) {
+	    $self->add_fh(@$fhspec);
+	}
     }
+    return(scalar(@{$self->{filehandles}}));
 }
 
 
