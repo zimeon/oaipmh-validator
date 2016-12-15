@@ -326,8 +326,8 @@ sub test_identify {
 
     # Extract admin email and protocol version numbers, check
     my ($admin_email,$email_error)=$self->get_admin_email;
-    if ($email_error) {
-        $self->abort($email_error.", aborting.\n");
+    if (not $admin_email or $email_error) {
+        $self->abort(($email_error || "Failed to extract adminEmail").", aborting.\n");
         return;
     }
     $self->admin_email($admin_email);
@@ -1553,7 +1553,7 @@ sub get_admin_email {
                 $self->log->warn("Stripped mailto: prefix from adminEmail address, this should not be included.");
             }
             if (my $msg=$self->bad_admin_email($e)) {
-                return($msg);
+                return(undef,$msg);
             }
             push(@emails,$e);
             }
@@ -1566,7 +1566,7 @@ sub get_admin_email {
         return(undef);
     }
     my $email=join(',',@emails);
-    $self->log->note("Administrator email address $email");
+    $self->log->pass("Administrator email address is '$email'");
     return($email);
 }
 
