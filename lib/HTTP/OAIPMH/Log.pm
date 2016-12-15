@@ -68,7 +68,24 @@ sub new {
 }
 
 
-=head3 fh($fh, $type)
+=head3 fh(@fhspecs)
+
+Set the list of filehandle specs that will be written to, clearing
+any that already exist. Each entry in the @fhspec array should be a 
+arrayref to ($fh,$type) used to call $self->add_fh($fh,$type).
+
+=cut
+
+sub fh {
+    my $self=shift;
+    $self->{filehandles} = [];
+    foreach my $fhspec (@_) {
+	$self->add_fh(@$fhspec);
+    }
+}
+
+
+=head3 add_fh($fh,$type)
 
 Add a filehandle to the logger. If $type is set equal to 'json' then
 JSON will be written, els if 'html then HTML will be written, otherwise
@@ -76,7 +93,7 @@ text is output in markdown format. The call is ignored unless $fh is True.
 
 =cut
 
-sub fh {
+sub add_fh {
     my $self=shift;
     my ($fh,$type)=@_;
     return() if (not $fh);
