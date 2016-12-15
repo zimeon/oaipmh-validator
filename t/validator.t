@@ -26,8 +26,8 @@ ok( $caught=~m/^ABORT: bwaaaa!/, 'abort dies' );
 #summary
 ok( $v = HTTP::OAIPMH::Validator->new, 'new validator object' );
 ok( $v->summary=~/## Summary - \*success\*/, 'summary has title' );
-ok( $v->summary=~/  \* Total tests passed 0/ );
-ok( $v->summary=~/  \* Total warnings 0/ );
+ok( $v->summary=~/  \* Total tests passed: 0/ );
+ok( $v->summary=~/  \* Total warnings: 0/ );
 ok( $v->summary=~/  \* Total error count: 0/ );
 ok( $v->summary=~/  \* Validation status: unknown/, 'summary has status unknown' );
 
