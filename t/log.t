@@ -1,7 +1,7 @@
 # Tests for HTTP::OAIPMH::Log
 use strict;
 
-use Test::More tests => 58;
+use Test::More tests => 60;
 use HTTP::OAIPMH::Log;
 use JSON qw(decode_json);
 
@@ -10,7 +10,9 @@ ok( $log, "created new Log object" );
 
 # add loggers
 is( $log->fh, 0, "empty call" );
-is( $log->fh([\*STDERR]), 1, "stderr fh" );
+is( $log->fh(\*STDERR), 1, "stderr fh plain" );
+is( $log->fh([\*STDERR]), 1, "stderr fh arrayref" );
+is( $log->fh([\*STDERR,'json']), 1, "stderr fh arrayref with type" );
 is( $log->fh, 1, "empty call, 1 set" );
 is( $log->fh([\*STDERR],[\*STDOUT, 'json']), 2, "stderr fh, json" );
 is( scalar(@{$log->filehandles}), 2, "2 loggers");

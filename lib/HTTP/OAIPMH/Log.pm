@@ -72,7 +72,8 @@ sub new {
 
 Set the list of filehandle specs that will be written to, clearing
 any that already exist. Each entry in the @fhspec array should be a 
-arrayref to ($fh,$type) used to call $self->add_fh($fh,$type).
+either a filehandle or an arrayref [$fh,$type] used to call
+$self->add_fh($fh,$type) to set the type as well.
 
 Returns number of filehandles in the list to write to.
 
@@ -83,6 +84,7 @@ sub fh {
     if (@_) {
 	$self->{filehandles} = [];
 	foreach my $fhspec (@_) {
+	    $fhspec = [$fhspec] unless (ref($fhspec) eq 'ARRAY');
 	    $self->add_fh(@$fhspec);
 	}
     }
