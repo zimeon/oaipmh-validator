@@ -74,10 +74,10 @@ $log = HTTP::OAIPMH::Log->new;
 ok( $log, "created new Log object" );
 $str=''; open($fh, '>', \$str); 
 is( $log->fh([$fh]), 1, "connected out to str" );
-ok( $log->_add("WARN","short","long"), "_add WARN short long" );
-is( $str, "WARN:    short\n", "WARN line written without long" );
-ok( $log->_add("FAIL","short","very very very long"), "_add FAIL short long" );
-is( $str, "WARN:    short\nFAIL:    short\n", "FAIL line written without long" );
+ok( $log->_add("WARN","short"), "_add WARN short" );
+is( $str, "WARN:    short\n", "WARN line written" );
+ok( $log->_add("FAIL","short","more"), "_add FAIL short long" );
+is( $str, "WARN:    short\nFAIL:    short more\n", "FAIL line written" );
 
 $log = HTTP::OAIPMH::Log->new;
 ok( $log, "created new Log object" );

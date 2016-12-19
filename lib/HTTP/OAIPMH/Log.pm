@@ -164,37 +164,35 @@ sub note {
 }
 
 
-=head3 fail($msg,$longmsg)
+=head3 fail($msg)
 
-Record a failure and increment the $obj->num_fail count. Must have
-a message $msg and may optionally include a longer explanation $longmsg.
+Record a failure and increment the $obj->num_fail count.
 
 =cut
 
 sub fail {
     my $self=shift;
-    my ($msg,$longmsg)=@_;
+    my ($msg)=@_;
     $self->{num_fail}++;
-    return $self->_add('FAIL',$msg,$longmsg||'');
+    return $self->_add('FAIL',$msg);
 }
 
 
-=head3 warn($msg,$longmsg)
+=head3 warn($msg)
 
-Record a warning and increment the $obj->num_warn count. Must have
-a message $msg and may optionally include a longer explanation $longmsg.
+Record a warning and increment the $obj->num_warn count.
 
 =cut
 
 sub warn {
     my $self=shift;
-    my ($msg,$longmsg)=@_;
+    my ($msg)=@_;
     $self->{num_warn}++;
-    return $self->_add('WARN',$msg,$longmsg||'');
+    return $self->_add('WARN',$msg);
 }
 
 
-=head3 pass($msg,$longmsg)
+=head3 pass($msg)
 
 Record a success and increment the $obj->num_pass count. Must have
 a message $msg explaining what has passed.
@@ -223,35 +221,41 @@ sub _add {
     my $self=shift;
     push( @{$self->{log}}, [@_] );
     if (scalar($self->filehandles)>0) {
-        my $type = shift(@_);
-        my $md_prefix = '';
-        my $md_suffix = "\n";
-        my $msg = '';
-        if ($type eq 'TITLE') {
-            $md_prefix = "\n### ";
-            $md_suffix = "\n\n";
-            $msg = join(' ',@_);
+        $self->_write_to_filehandles([@_], $self->filehandles);
+    }
+    return(1);
+}
+
+
+# _write_to_filehandles($entry, $filehandles) - write one entry
+# to zero of more filehandles with formats as specified in
+# $filehandles data.
+#
+sub _write_to_filehandles {
+    my $self = shift(@_);
+    my ($entry, $filehandles) = @_;
+    my $type = shift(@$entry);
+    my $md_prefix = '';
+    my $md_suffix = "\n";
+    my $msg = join(' ',@$entry);
+    foreach my $fhd (@$filehandles) {
+        if ($fhd->{'type'} eq 'json') {
+            $self->_write_json($fhd->{'fh'},$type,$msg);
+        } elsif ($fhd->{'type'} eq 'html') {
+            $self->_write_html($fhd->{'fh'},$type,$msg);
         } else {
-            $md_prefix = sprintf("%-8s ",$type.':');
-            if ($type eq 'WARN' or $type eq 'FAIL') {
-                # only $msg not $longmsg
-                $msg = shift(@_);
+            if ($type eq 'TITLE') {
+                $md_prefix = "\n### ";
+                $md_suffix = "\n\n";
             } else {
-                $msg = join(' ',@_);
+                $md_prefix = sprintf("%-8s ",$type.':');
             }
-        }
-        foreach my $fhd (@{$self->filehandles}) {
-            if ($fhd->{'type'} eq 'json') {
-                $self->_write_json($fhd->{'fh'},$type,$msg);
-            } elsif ($fhd->{'type'} eq 'html') {
-                $self->_write_html($fhd->{'fh'},$type,$msg);
-            } else {
-                $self->_write_md($fhd->{'fh'},$md_prefix,$msg,$md_suffix);
-            }
+            $self->_write_md($fhd->{'fh'},$md_prefix,$msg,$md_suffix);
         }
     }
     return(1);
 }
+
 
 # _write_md($fh, @msg) - Write a markdown log entry to $fh, combining
 # all @msg by simple concatenation to make the string
@@ -290,6 +294,25 @@ sub _write_json {
                               fail=>$self->num_fail,
                               warn=>$self->num_warn,
                               timestamp=>''.localtime() })."\n";
+}
+
+
+=head3 last_match($regex)
+
+Return last log entry where the message matches $regex, else
+empty return.
+
+=cut
+
+sub last_match {
+    my $self=shift;
+    my ($regex)=@_;
+    foreach my $entry (reverse(@{$self->log})) {
+        if ($entry->[1]=~$regex) {
+            return($entry);
+        }
+    }
+    return;
 }
 
 1;

@@ -199,9 +199,15 @@ sub run_complete_validation {
     } else {
         if ($formats and $formats->getLength()>0) {
             $self->example_metadata_prefix( $formats->item(0)->getFirstChild->getData );
-            $self->log->fail("Data provider does not support the simple Dublin Core metadata format with metadataPrefix oai_dc. Tests that require a metadataPrefix to be specified will use '".$self->example_metadata_prefix."'");
+            $self->log->fail("Data provider does not support the simple Dublin Core metadata ".
+                             "format with metadataPrefix oai_dc. Tests that require a ".
+                             "metadataPrefix to be specified will use '".
+                             $self->example_metadata_prefix."'");
         } else {
-            $self->log->fail("There are no metadata formats available to use with the GetRecord request. The metadataPrefix ".$self->example_metadata_prefix." will be used for later tests even though it seems unsupported.");
+            $self->log->fail("There are no metadata formats available to use with the GetRecord ".
+                             "request. The metadataPrefix ".
+                             $self->example_metadata_prefix.
+                             " will be used for later tests even though it seems unsupported.");
         }
     }
 
@@ -222,6 +228,34 @@ sub run_complete_validation {
     # (there may be warnings which are not counted in num_fail)
     $self->status( $self->log->num_fail==0 ? 'COMPLIANT' : 'FAILED' );
     return($self->log->num_fail==0);
+}
+
+
+=head3 failures()
+
+=cut
+
+sub failures {
+    my $self=shift;
+    return('') if ($self->log->num_fail==0);  #shirt circuit if no failures
+
+    my $str="\n## Failure summary\n\n";
+    my $last_title='Unknown title';
+    my $last_request=undef;
+    for my $entry (@{$self->log->log}) {
+    	my $type = @$entry[0];
+	if ($type eq 'TITLE') {
+	    $last_title=$entry;
+            $last_request=undef;
+        } elsif ($type eq 'REQUEST') {
+	    $last_request=$entry;
+        } elsif ($type eq 'FAIL') {
+            $str .= join(" ",@$last_title)."\n" if (defined $last_title);
+            $str .= join(" ",@$last_request)."\n" if (defined $last_request);
+            $str .= join(" ",@$entry)."\n";
+        }
+    }
+    return($str);
 }
 
 
@@ -284,7 +318,11 @@ sub test_identify {
     unless ($response->is_success) {
         my $r="Server at base URL '$burl' failed to respond to Identify. The HTTP GET request with URL $req received response code '".$response->code()."'.";
         if ($response->code() == 301) {
-            $self->log->fail("$r HTTP code 301 'Moved Permanently' is not widely supported by harvesters and is anyway inappropriate for registration of a service. If requests must be redirected then an HTTP response 302 may be used as outlined in the guidelines [".$self->guidelines."#LoadBalancing].");
+            $self->log->fail("$r HTTP code 301 'Moved Permanently' is not widely supported by ".
+                             "harvesters and is anyway inappropriate for registration of a ".
+                             "service. If requests must be redirected then an HTTP response 302 ".
+                             "may be used as outlined in the guidelines [".
+                             $self->guidelines."#LoadBalancing].");
         } else {
             $self->log->fail($r);
         }
@@ -294,7 +332,7 @@ sub test_identify {
 
     # Parse the XML response
     unless ($self->parse_response($req,$response)) {
-        $self->log->fail("Failed to parse Identify response.\n");
+        $self->log->fail("Failed to parse Identify response");
         $self->abort("Failed to parse Identify response from server at base URL '$burl'.\n");
     }
 
@@ -306,8 +344,10 @@ sub test_identify {
         $oaipmhNode=$oaipmhNode->getNextSibling();
     }
     unless (defined $oaipmhNode and $oaipmhNode->getNodeName eq 'OAI-PMH') {
-        $self->log->fail("Identify response does not have OAI-PMH as root element! Found node named '".$oaipmhNode->getNodeName."' instead.\n");
-        $self->abort("Identify response from server at base URL '$burl' does not have OAI-PMH as root element!\n");
+        $self->log->fail("Identify response does not have OAI-PMH as root element! ".
+                         "Found node named '".$oaipmhNode->getNodeName."' instead");
+        $self->abort("Identify response from server at base URL '$burl' does not have ".
+                     "OAI-PMH as root element!\n");
     }
     my $identifyNode=$oaipmhNode->getElementsByTagName('Identify',0);
     unless ($identifyNode->getLength()>0) {
@@ -350,14 +390,11 @@ sub test_identify {
         } else {
             # report the error, but keep the form URL
             # (at least it answered Identify!)
-            $self->log->fail("baseURL supplied '$burl' does not match the baseURL in the Identify response '$baseURL'. ".
-                 "The baseURL you enter must EXACTLY match the baseURL returned in the Identify response. ".
-                 "It must match in case (http://Wibble.org/ does not match http://wibble.org/) and include ".
-                 "any trailing slashes etc.",
-                 "The baseURL supplied\n$burl\ndoes not match the baseURL provided in the Identify response\n$baseURL ".
-                 "The baseURL you enter must EXACTLY match the baseURL returned in the Identify response. ".
-                 "It must match in case (http://Wibble.org/ does not match http://wibble.org/) and include ".
-                 "any trailing slashes etc.");
+            $self->log->fail("baseURL supplied '$burl' does not match the baseURL in the ".
+                             "Identify response '$baseURL'. The baseURL you enter must EXACTLY ".
+                             "match the baseURL returned in the Identify response. It must ".
+                             "match in case (http://Wibble.org/ does not match http://wibble.org/) ".
+                             "and include any trailing slashes etc.");
             $cantContinue++;
         }
     }
@@ -387,7 +424,9 @@ sub test_identify {
     my $oaiIds = $self->doc->getElementsByTagName('oai-identifier');
     if ($oaiIds and $oaiIds->getLength()>0) {
         if ($oaiIds->getLength()>1) {
-            $self->log->fail("Found more than one oai-identifier element. The intention is that this declaration only be used by repositories declaring the use of a single identifier namespace. However, we haven't really considered other cases so you may wish to contact us to discuss this.");
+            $self->log->fail("Found more than one oai-identifier element. The intention ".
+                             "is that this declaration only be used by repositories ".
+                             "declaring the use of a single identifier namespace.");
             $cantContinue++;
         } else {
             $oaiIds=$oaiIds->item(0);
@@ -402,26 +441,39 @@ sub test_identify {
                     $oai_id_version='1.1';
                     $self->log->pass("oai-identifier description for version $oai_id_version is being used");
                 } elsif ($xmlns) {
-                    $self->log->fail("Unrecognized namespace declaration '$xmlns' for oai-identifier, expected http://www.openarchives.org/OAI/2.0/oai-identifier (for v2.0) or http://www.openarchives.org/OAI/1.1/oai-identifier (for v1.1). Assuming version $oai_id_version.");
+                    $self->log->fail("Unrecognized namespace declaration '$xmlns' for ".
+                                     "oai-identifier, expected ".
+                                     "http://www.openarchives.org/OAI/2.0/oai-identifier ".
+                                     "(for v2.0) or ".
+                                     "http://www.openarchives.org/OAI/1.1/oai-identifier ".
+                                     "(for v1.1). Assuming version $oai_id_version.");
                 } else {
-                    $self->log->fail("No namespace declaration found for oai-identifier, expected http://www.openarchives.org/OAI/2.0/oai-identifier (for v2.0) or http://www.openarchives.org/OAI/1.1/oai-identifier (for v1.1). Assuming version $oai_id_version/");
+                    $self->log->fail("No namespace declaration found for oai-identifier, expected ".
+                                     "http://www.openarchives.org/OAI/2.0/oai-identifier ".
+                                     "(for v2.0) or ".
+                                     "http://www.openarchives.org/OAI/1.1/oai-identifier ".
+                                     "(for v1.1). Assuming version $oai_id_version/");
                 }
             } else {
-                $self->log->fail("Can't find namespace declaration for the oai-identifier description. This must be added as <oai-identifier xmlns=\"http://www.openarchives.org/OAI/2.0/oai-identifier\" ...> (or 1.1), there will likely also be schema validation weeors. Will assume that the oai-identifier is version $oai_id_version for later tests");
+                $self->log->fail("Can't find namespace declaration for the oai-identifier description. ".
+                                 "This must be added as <oai-identifier xmlns=\"http://www.openarchives.org/OAI/2.0/oai-identifier\" ...> ".
+                                 "(or 1.1), there will likely also be schema validation weeors. Will ".
+                                 "assume that the oai-identifier is version $oai_id_version for ".
+                                 "later tests");
             }
             my $repoIds = $oaiIds->getElementsByTagName('repositoryIdentifier');
             if ($repoIds) {
                 my $temp = $repoIds->item(0);
                 if (!defined($temp)) {
-                    $self->log->fail("No namespace-identifier (repositoryIdentifier element) in the oai-identifier block of the Identify description",
-                                   "No namespace-identifier (repositoryIdentifier element) in the oai-identifier block of the Identify description");
+                    $self->log->fail("No namespace-identifier (repositoryIdentifier element) in ".
+                                     "the oai-identifier block of the Identify description");
                     return;
                 }
                 my $nsel = $temp->getFirstChild;
                 unless ( $nsel ) {
                     # Empty repositoryIdentifier element, squawk loudly
-                    $self->log->fail("Empty namespace-identifier (repositoryIdentifier element) in the oai-identifier block of the Identify description",
-                                   "Empty namespace-identifier (repositoryIdentifier element) in the oai-identifier block of the Identify description");
+                    $self->log->fail("Empty namespace-identifier (repositoryIdentifier element) in ".
+                                     "the oai-identifier block of the Identify description");
                     return;
                 }
                 my $namespace_id = $nsel->getData;
@@ -430,18 +482,26 @@ sub test_identify {
                 if ($oai_id_version eq '2.0') {
                     #schema: <pattern value="[a-zA-Z][a-zA-Z0-9\-]*(\.[a-zA-Z][a-zA-Z0-9\-]+)+"/>
                     unless ($namespace_id=~/^[a-z][a-z0-9\-]*(\.[a-z][a-z0-9\-]+)+$/i) {
-                        $self->log->fail("Bad namespace-identifier (repositoryIdentifier element) '$namespace_id' in oai-identifier declaration. See section 2.1 of the OAI Identifier specification for details (http://www.openarchives.org/OAI/2.0/guidelines-oai-identifier.htm).");
+                        $self->log->fail("Bad namespace-identifier (repositoryIdentifier element) ".
+                                         "'$namespace_id' in oai-identifier declaration. See section ".
+                                         "2.1 of the OAI Identifier specification for details ".
+                                         "(http://www.openarchives.org/OAI/2.0/guidelines-oai-identifier.htm).");
                         $cantContinue++;
                     } else {
-                        $self->log->pass("namespace-identifier (repositoryIdentifier element) in oai-identifier declaration is $namespace_id");
+                        $self->log->pass("namespace-identifier (repositoryIdentifier element) in oai-identifier ".
+                                         "declaration is $namespace_id");
                         $self->namespace_id( $namespace_id );
                     }
                 } else { #v1.1 schema: <pattern value="[a-zA-Z0-9]+"/>
                     unless ($namespace_id=~/^[a-z0-9]+$/i) {
-                        $self->log->fail("Bad namespace-identifier (repositoryIdentifier element) '$namespace_id' in oai-identifier declaration. See section 2.1 of the OAI Identifier specification for details (http://www.openarchives.org/OAI/1.1/guidelines-oai-identifier.htm).");
+                        $self->log->fail("Bad namespace-identifier (repositoryIdentifier element) ".
+                                         "'$namespace_id' in oai-identifier declaration. See section ".
+                                         "2.1 of the OAI Identifier specification for details ".
+                                         "(http://www.openarchives.org/OAI/1.1/guidelines-oai-identifier.htm).");
                         $cantContinue++;
                     } else {
-                        $self->log->pass("namespace-identifier (repositoryIdentifier element) in oai-identifier declaration is $namespace_id");
+                        $self->log->pass("namespace-identifier (repositoryIdentifier element) in oai-identifier ".
+                                         "declaration is $namespace_id");
                         $self->namespace_id( $namespace_id );
                     }
                 }
@@ -488,12 +548,19 @@ sub test_list_sets {
         my $details={};
         if ($self->is_error_response($details)) {
             if ($details->{'noSetHierarchy'}) {
-                $self->log->pass("Repository does not support sets and the is correctly reported with a noSetHierarchy exception in the ListSets response");
+                $self->log->pass("Repository does not support sets and the is correctly reported with a ".
+                                 "noSetHierarchy exception in the ListSets response");
             } else {
-                $self->log->fail("Failed to extract any setSpec elements from ListSets but did not find a noSetHierarchy exception. Found instead a '".join(', ',keys %{$details})."' exception(s). See <".$self->protocol."#ListSets>.");
+                $self->log->fail("Failed to extract any setSpec elements from ListSets ".
+                                 "but did not find a noSetHierarchy exception. Found instead a '".
+                                 join(', ',keys %{$details})."' exception(s). See <".
+                                 $self->protocol."#ListSets>.");
             }
         } else {
-            $self->log->fail("Failed to extract any setSpec elements from ListSets but did not find an exception message. If sets are not supported by the repository then the ListSets response must be the noSetHierarchy error. See <".$self->protocol."#ListSets>.");
+            $self->log->fail("Failed to extract any setSpec elements from ListSets but did not ".
+                             "find an exception message. If sets are not supported by the ".
+                             "repository then the ListSets response must be the noSetHierarchy ".
+                             "error. See <".$self->protocol."#ListSets>.");
         }
     } else {
         # Have setSpec elements, record all set names and pick an example set spec
@@ -505,7 +572,8 @@ sub test_list_sets {
         # Sanity check, did we get the number we expected?
         my $num_sets=scalar(@{$self->set_names});
         if ($num_sets!=$set_elements->getLength) {
-            $self->log->fail("Failed to extract the expected number of set names (got $num_sets, expected ".$set_elements->getLength.")");
+            $self->log->fail("Failed to extract the expected number of set names (got ".
+                             "$num_sets, expected ".$set_elements->getLength.")");
         }
         if ($num_sets>0) {
             $self->example_set_spec( "&set=".$self->set_names->[0] );
@@ -513,7 +581,8 @@ sub test_list_sets {
         my $msg='';
         for (my $j=0; $j<$num_sets and $j<3; $j++) { $msg.=" ".$self->set_names->[$j]; }
         $msg.=" ..." if ($num_sets>3);
-        $self->log->pass("Extracted $num_sets set names: {$msg }, will use setSpec ".$self->example_set_spec." in tests");
+        $self->log->pass("Extracted $num_sets set names: {$msg }, will use setSpec ".
+                         $self->example_set_spec." in tests");
     }
 }
 
@@ -607,9 +676,11 @@ sub test_list_identifiers {
     if ($h==$headers->getLength()) {
         # No identifiers were in the ListIdentifiers response.  Further testing
         # is not possible.
-        $self->log->fail("The response to the ListIdentifiers verb contained no identifier elements. No further tests will be made.",
-                   "The response to the ListIdentifiers verb with metadataPrefix oai_dc contained no identifiers. Without at least one identifier, we cannot proceed with the validation tests.");
-        $self->abort("No identifiers in response to ListIdentifiers. Without an identifier we cannot proceed with validation tests.");
+        $self->log->fail("The response to the ListIdentifiers verb with metadataPrefix oai_dc ".
+                         "contained no identifiers. Without at least one identifier, we cannot ".
+                         "proceed with the validation tests.");
+        $self->abort("No identifiers in response to ListIdentifiers. Without an identifier ".
+                     "we cannot proceed with validation tests.");
     }
     $self->log->pass("Good ListIdentifiers response, extracted id '$record_id' for use in future tests.");
     $self->example_record_id( $record_id );
@@ -641,7 +712,8 @@ sub test_list_metadata_formats {
     my $req = $self->base_url."?verb=ListMetadataFormats&identifier=".url_encode($record_id);
     my $response = $self->make_request_and_validate("ListMetadataFormats",$req);
     unless ($response) {
-        $self->log->fail("Can't check metadataFormats available for item $record_id, no response to ListMetadataFormats request.");
+        $self->log->fail("Can't check metadataFormats available for item $record_id, no ".
+                         "response to ListMetadataFormats request.");
         return;
     }
 
@@ -653,7 +725,8 @@ sub test_list_metadata_formats {
 
     my $formats = $self->doc->getElementsByTagName('metadataPrefix');
     unless ($formats->getLength() > 0) {
-        $self->log->fail("No metadata formats are listed in the response to a ListMetadataFormats request for item $record_id.");
+        $self->log->fail("No metadata formats are listed in the response to a ListMetadataFormats ".
+                         "request for item $record_id.");
         return;
     }
 
@@ -721,15 +794,16 @@ sub test_get_record {
     }
 
     if (my $msg=$self->is_error_response) {
-        $self->log->fail("The response to the GetRecord verb was the OAI exception $msg. It is this not possible to extract a valid datestamp for remaining tests");
+        $self->log->fail("The response to the GetRecord verb was the OAI exception $msg. ".
+                         "It is this not possible to extract a valid datestamp for remaining tests");
         $self->abort("Unexpected OAI exception response");
     }
 
     my $datestamps = $self->doc->getElementsByTagName('datestamp');
     # If there is no <record> there is no datestamp ... but there should be a record
     unless ( $datestamps->getLength() > 0 ) {
-        $self->log->fail("The response to the GetRecord verb did not have a datestamp, which is needed to continue checking verbs.  Exiting.",
-                   "The base URL's response to the GetRecord verb did not have a datestamp, which is needed to continue checking verbs. Exiting.");
+        $self->log->fail("The response to the GetRecord verb did not have a datestamp, which is ".
+                         "needed to continue checking verbs.");
         $self->abort("No datestamp in the response for GetRecord");
     }
 
@@ -738,19 +812,25 @@ sub test_get_record {
         $datestamp = $datestamps->item(0)->getFirstChild->getData;
     };
     if (not defined($datestamp)) {
-        $self->log->fail("Failed to extract datestamp from the GetRecord response. See <".$self->protocol."#Dates>.");
+        $self->log->fail("Failed to extract datestamp from the GetRecord response. See <".
+                         $self->protocol."#Dates>.");
         $numerr++;
     } elsif ( my $granularity=$self->get_datestamp_granularity($datestamp) ) {
-        $self->log->pass("Datestamp in GetRecord response ($datestamp) has the correct form for $granularity granularity.");
+        $self->log->pass("Datestamp in GetRecord response ($datestamp) has the correct form for ".
+                         "$granularity granularity.");
         if ( $granularity eq $self->granularity ) {
             # The granularity in v2.0 must match the finest granularity supported (see sec3.3.2)
-            $self->log->pass("Datestamp in GetRecord response ($datestamp) matched the ".$self->granularity." granularity specified in the Identify response. ");
+            $self->log->pass("Datestamp in GetRecord response ($datestamp) matched the ".
+                             $self->granularity." granularity specified in the Identify response. ");
         } else {
-            $self->log->fail("Datestamp in GetRecord response ($datestamp) is not consistent with the ".$self->granularity." granularity specified in the Identify response");
+            $self->log->fail("Datestamp in GetRecord response ($datestamp) is not consistent ".
+                             "with the ".$self->granularity." granularity specified in the ".
+                             "Identify response");
             $numerr++;
         }
     } else {
-        $self->log->fail("Datestamp in GetRecord response ($datestamp) is not valid. See <".$self->protocol."#Dates>.");
+        $self->log->fail("Datestamp in GetRecord response ($datestamp) is not valid. See <".
+                         $self->protocol."#Dates>.");
         $numerr++;
     }
 
@@ -776,8 +856,9 @@ sub test_get_record {
         }
     }
     if ($i==$set_list->getLength) {         # error
-        $self->log->fail("Expected setSpec was missing from the response",
-               "The GetRecord response for identifier $record_id did not contain a set specification for $set_value");
+        $self->log->fail("Expected setSpec was missing from the response. The GetRecord ".
+                         "response for identifier $record_id did not contain a set ".
+                         "specification for $set_value");
     } else {
         $self->log->pass("Expected setSpec was returned in the response".$subset_str);
     }
@@ -823,8 +904,7 @@ sub test_list_records {
         if ($self->parse_response($req,$response)) {
             $self->log->pass("Response is well formed");
         } else {
-            $self->log->fail("Response is not well formed",
-                             "The ListRecords response was not well formed");
+            $self->log->fail("The ListRecords response was not well formed XML");
         }
 
         # Now check to make sure that we got back the record for the identifier
@@ -838,13 +918,21 @@ sub test_list_records {
         my $details={};
         if ($self->is_error_response($details)) {
             if ($details->{'noRecordsMatch'}) {
-                $self->log->fail("ListRecords response gave a noRecordsMatch error when it should have included at least the record with identifier $record_id. The from and until parameters of the request were set to the datestamp of this record ($datestamp). The from and until parameters are inclusive, see protocol spec section 2.7.1. The message included in the error response was: '".$details->{'noRecordsMatch'}."'");
+                $self->log->fail("ListRecords response gave a noRecordsMatch error when it should ".
+                                 "have included at least the record with identifier $record_id. ".
+                                 "The from and until parameters of the request were set to the ".
+                                 "datestamp of this record ($datestamp). The from and until parameters ".
+                                 "are inclusive, see protocol spec section 2.7.1. The message ".
+                                 "included in the error response was: '".
+                                 $details->{'noRecordsMatch'}."'");
             } else {
                 my @txt=();
                 foreach my $k (keys %$details) {
                     push(@txt,"$k (".$details->{$k}.")");
                 }
-                $self->log->fail("ListRecords gave an unexpected error response to a request using from and until datestamps taken from the previous GetRecord response: ".join(', ',@txt));
+                $self->log->fail("ListRecords gave an unexpected error response to a request using ".
+                                 "from and until datestamps taken from the previous GetRecord response: ".
+                                 join(', ',@txt));
             }
         } else {
             my $id_list = $self->doc->getElementsByTagName('identifier');
@@ -859,17 +947,23 @@ sub test_list_records {
                 }
             }
             if ($badly_formed) {
-                $self->log->fail("ListRecords response badly formed, identifier element for record ".($i+1)." is empty");
+                $self->log->fail("ListRecords response badly formed, identifier element for record ".
+                                 ($i+1)." is empty");
             } elsif ($i<$id_list->getLength) {
                 $self->log->pass("ListRecords response correctly included record with identifier $record_id");
             } elsif (my $token=$self->get_resumption_token) {
                 # More responses to come, may just not have got to the
                 # record yet... roll around for more:
-                $self->log->pass("ListRecords response includes resumptionToken. Haven't found record with identifier $record_id yet, will continue with resumptionToken...");
+                $self->log->pass("ListRecords response includes resumptionToken. Haven't found ".
+                                 "record with identifier $record_id yet, will continue with resumptionToken...");
                 $list_not_complete=1;
                 $req = $self->base_url."?verb=ListRecords&resumptionToken=".url_encode($token);
             } else {
-                $self->log->fail("ListRecords response did not include the identifier $record_id which should have been included because both the from and until parameters were set to the datestamp of this record ($datestamp). The from and until parameters are inclusive, see protocol spec section 2.7.1");
+                $self->log->fail("ListRecords response did not include the identifier $record_id ".
+                                 "which should have been included because both the from and until ".
+                                 "parameters were set to the datestamp of this record ($datestamp). ".
+                                 "The from and until parameters are inclusive, see protocol spec ".
+                                 "section 2.7.1");
             }
         }
     }
@@ -896,7 +990,8 @@ sub test_resumption_tokens {
 
     # was there a resumption token?
     unless ($self->parse_response($req,$response)) {
-        $self->log->fail("Can't parse malformed XML in response to ListRecords request. Cannot complete test for correct use of resumptionToken (if used)");
+        $self->log->fail("Can't parse malformed XML in response to ListRecords request. ".
+                         "Cannot complete test for correct use of resumptionToken (if used)");
         return;
     }
 
@@ -921,8 +1016,9 @@ sub test_resumption_tokens {
        $tokenString = $token->getData;
     }
     unless ($tokenString) {
-       $self->log->fail("Empty resumption token. There should never be an empty resumptionToken in response to a request without a resumptionToken argument",
-           "Empty resumption token in response to $req There should never be an empty resumptionToken in response to a request without a resumptionToken argument");
+       $self->log->fail("Empty resumption token in response to $req There should never ".
+                        "be an empty resumptionToken in response to a request without a ".
+                        "resumptionToken argument");
        return;
     }
 
@@ -932,9 +1028,12 @@ sub test_resumption_tokens {
     if (my $cursor=$tokenElement->getAttribute('cursor')) {
         $usingCursor=1;
         if ($cursor==0) {
-            $self->log->pass("A cursor value was supplied with the resumptionToken and it correctly had the value zero in the first response");
+            $self->log->pass("A cursor value was supplied with the resumptionToken and it ".
+                             "correctly had the value zero in the first response");
         } else {
-            $self->log->fail("A cursor value was supplied with the resumptionToken but it did not have the correct value zero for the first response. The value was '$cursor'.");
+            $self->log->fail("A cursor value was supplied with the resumptionToken but it ".
+                             "did not have the correct value zero for the first response. ".
+                             "The value was '$cursor'.");
         }
     }
 
@@ -946,20 +1045,17 @@ sub test_resumption_tokens {
     $req = $self->base_url."?verb=ListRecords&resumptionToken=".url_encode($tokenString);
     $response = $self->make_request($req);
     unless ( $response ) {
-        $self->log->fail("Site failed to respond to request using resumptionToken",
-               "Site failed to respond to request using resumptionToken: $req");
+        $self->log->fail("Site failed to respond to request using resumptionToken: $req");
         return;
     }
     unless ( $self->parse_response($req,$response)) {
-        $self->log->fail("Can't parse response to request using resumptionToken",
-                         "Response to this request is not valid XML: $req");
-       return;
+        $self->log->fail("Response to request is using resumptionToken not valid XML: $req");
+        return;
     }
 
     my $errorList = $self->doc->getElementsByTagName('error');
     if ( $errorList and $errorList->getLength() > 0 ) {
-        $self->log->fail("Response to request using resumptionToken was an error code",
-               "Response to the request: $req was an error code!\n".$response->content()."\n");
+        $self->log->fail("Response to request using resumptionToken was an error code: $req");
         return;
     }
 
@@ -1033,8 +1129,8 @@ sub test_expected_errors {
             if (my $matching_code=$self->error_elements_include($error_elements, $error_codes)) {
                 $self->log->pass("Error response correctly includes error code '$matching_code'");
             } else {
-                $self->log->fail("Exception/error response did not contain error code '$ok_errors' ".html_escape($reason),
-                       "Response to this request did not give error code '$ok_errors': $request_string $reason");
+                $self->log->fail("Exception/error response did not contain error code ".
+                                 "'$ok_errors' ".html_escape($reason));
                 $n++;
                 next;
             }
@@ -1091,11 +1187,13 @@ sub test_expected_v2_errors {
         my $ok_errors=join(' or ',@$error_codes);
         my $error_elements = $self->doc->getElementsByTagName('error');
         if ( !$error_elements or $error_elements->getLength==0 ) {
-            $self->log->fail("Failed to extract error code from the response to request: $request_string $reason");
+            $self->log->fail("Failed to extract error code from the response to request: ".
+                             "$request_string $reason");
         } elsif (my $matching_code=$self->error_elements_include($error_elements, $error_codes) ) {
             $self->log->pass("Error response correctly includes error code '$matching_code'");
         } else {
-            $self->log->fail("Error code $ok_errors not found in response but should be given to the request: $request_string $reason");
+            $self->log->fail("Error code $ok_errors not found in response but should be given ".
+                             "to the request: $request_string $reason");
         }
     }
     return;
@@ -1139,14 +1237,15 @@ sub test_post_request {
         if ( $self->is_verb_response($response,$verb) ) {
             $self->log->pass("POST test $num for $verb was successful");
         } elsif ( $self->check_error_response($response) ) {
-            $self->log->fail("POST test $num for $verb was unsuccessful, an OAI error response was received",
-                             "POST test $num for $verb was unsuccessful. an OAI error response was received:\n".$response->content);
+            $self->log->fail("POST test $num for $verb was unsuccessful, an OAI error ".
+                             "response was received");
         } else {
-            $self->log->fail("POST test $num for $verb was unsuccessful, got neither a valid response nor an error");
+            $self->log->fail("POST test $num for $verb was unsuccessful, got neither a ".
+                             "valid response nor an error");
         }
     } else {
-        $self->log->fail("POST test $num was unsuccessful. Server returned HTTP Status: '".$response->status_line."'",
-                         "POST test $num was unsuccessful. Server returned HTTP Status:\n".$response->status_line);
+        $self->log->fail("POST test $num was unsuccessful. Server returned HTTP Status: '".
+                         $response->status_line."'");
     }
 }
 
@@ -1173,8 +1272,8 @@ sub check_response_date {
         if ($date=~/\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ/) {
             $self->log->pass("responseDate has correct format: $date");
         } else {
-            $self->log->fail("Bad responseDate of $date, this is not in UTC DateTime (YYYY-MM-DDThh:mm:ssZ) format",
-                  "Response to $req has a responseDate of $date, which is not in UTC DateTime (YYYY-MM-DDThh:mm:ssZ) format.\n");
+            $self->log->fail("Bad responseDate of $date, this is not in UTC DateTime ".
+                             "(YYYY-MM-DDThh:mm:ssZ) format");
         }
     } else {
        $self->log->fail("Failed to extract responseDate");
@@ -1203,24 +1302,21 @@ sub check_schema_name {
 
     my $elements = $self->doc->getElementsByTagName('OAI-PMH');   #NodeList
     unless ( $elements->getLength() > 0 ) {
-        $self->log->fail("Response to $req did not contain a OAI-PMH element",
-                         "Response to $req did not contain an OAI-PMH element\n");
+        $self->log->fail("Response to $req did not contain a OAI-PMH element");
         return(0);
     }
     my $attributes = $elements->item(0)->getAttributes;  #Node->NamedNodeMap
     my $attr = $attributes->getNamedItem('xsi:schemaLocation');  #Node
     unless ( $attr ) {
-        $self->log->fail("No xsi:schemaLocation attribute for the OAI-PMH element was found, expected xsi:schemaLocation=\"$namespace $location\"",
-                         "No xsi:schemaLocation attribute for the OAI-PMH element was found. Expected: xsi:schemaLocation=\"$namespace $location\"\n");
+        $self->log->fail("No xsi:schemaLocation attribute for the OAI-PMH element was ".
+                         "found, expected xsi:schemaLocation=\"$namespace $location\"");
         return(0);
     }
     $attr = $attributes->getNamedItem('xsi:schemaLocation');     #Node
     my $pair = $attr->getNodeValue();    # must pair OAI namespace with schema
     unless ( $pair =~ /^\s?$namespace\s*$location/ ) {
-        $self->log->fail("Error in pairing OAI namespace with schema location, expected: xsi:schemaLocation=\"$namespace $location\" but got $pair",
-               "Error in OAI namespace and/or schema location...\n".
-               "Expected: xsi:schemaLocation=\"$namespace $location\"\n".
-               "Got:      xsi:schemaLocation=\"$pair\"\n");
+        $self->log->fail("Error in pairing OAI namespace with schema location, expected: ".
+                         "xsi:schemaLocation=\"$namespace $location\" but got $pair");
         return(0);
     }
     return(1);
@@ -1416,7 +1512,8 @@ sub parse_granularity {
         $self->granularity('seconds');
         return($self->granularity);
     } else {
-        $self->log->fail("Bad value for the granularity element '$el', must be either YYYY-MM-DD or YYYY-MM-DDThh:mm:ssZ");
+        $self->log->fail("Bad value for the granularity element '$el', must be either ".
+                         "YYYY-MM-DD or YYYY-MM-DDThh:mm:ssZ");
         return;
    }
 }
@@ -1511,7 +1608,8 @@ sub is_error_response {
                 # Warn about no content unless it is the special case of noSetHierarchy
                 # where the error code really is sufficient
                 unless  ($code eq 'noSetHierarchy') {
-                    $self->log->warn("No human readable message included in error element for $code error, this is discouraged");
+                    $self->log->warn("No human readable message included in error element for ".
+                                     "$code error, this is discouraged");
                 }
                 $details->{$code}='[NO MESSAGE RETURNED]';
                 $msg.="[$code] ";
@@ -1550,7 +1648,8 @@ sub get_admin_email {
             for (my $i=0; $i<$n; $i++) {
             my $e=$adminEmailElements->item($i)->getFirstChild->getData;
             if ($e=~s/mailto://g) {
-                $self->log->warn("Stripped mailto: prefix from adminEmail address, this should not be included.");
+                $self->log->warn("Stripped mailto: prefix from adminEmail address, this ".
+                                 "should not be included.");
             }
             if (my $msg=$self->bad_admin_email($e)) {
                 return(undef,$msg);
@@ -1582,10 +1681,12 @@ sub bad_admin_email {
     my $self=shift;
     my ($admin_email)=@_;
     if ($admin_email=~/\@localhost$/) {
-        $self->log->fail("adminEmail '$admin_email' is local. This must be corrected to a valid globally resolvable email address before tests can continue.\n");
+        $self->log->fail("adminEmail '$admin_email' is local. This must be corrected to a ".
+                         "valid globally resolvable email address before tests can continue");
         return("local adminEmail");
     } elsif ($admin_email!~/^\w[\w\-\.]+\@[a-zA-Z0-9\-\.]+\.[a-z]{2,}$/) {
-        $self->log->fail("adminEmail '$admin_email' looks bogus. This must be corrected to a valid email address before tests can continue.\n");
+        $self->log->fail("adminEmail '$admin_email' looks bogus. This must be corrected to ".
+                         "a valid email address before tests can continue");
         return("looks like bogus adminEmail");
     }
     return;
@@ -1629,13 +1730,14 @@ sub make_request_and_validate {
         my $age = $response->current_age;
         my $lifetime = $response->freshness_lifetime;
         my $is_fresh = $response->is_fresh;
-        $self->log->fail("Server failed to respond to the $verb request (HTTP header values: status=$status, age=$age, lifetime=$lifetime, is fresh:=$is_fresh)\n");
+        $self->log->fail("Server failed to respond to the $verb request (HTTP header ".
+                         "values: status=$status, age=$age, lifetime=$lifetime, ".
+                         "is fresh:=$is_fresh)");
         return;
     }
 
     unless ($self->parse_response($req, $response)) {
-        $self->log->fail("Failed to parse response",
-               "Failed to parse response to $req");
+        $self->log->fail("Failed to parse response");
         return;
     }
 
@@ -1720,7 +1822,8 @@ sub make_request {
                         $self->abort("503 response with Retry-After > 1hour (3600s), aborting");
                     }
                 } else {
-                    $self->log->fail("503 response with bad (non-numeric) Retry-After time, will wait 10s");
+                    $self->log->fail("503 response with bad (non-numeric) Retry-After time, ".
+                                     "will wait 10s");
                     sleep 10;
                 }
             } else {
@@ -1769,7 +1872,9 @@ sub make_request {
 Attempt to parse the HTTP response $response, examining both the response code
 and then attempting to parse the content as XML.
 
-If $xml_reason is specified then ...FIXME
+If $xml_reason is specified then this is added to the failure message, if
+nothing is specified then a standard message about UTF-8 issues is 
+added.
 
 Returns true on success and sets $self->doc with the parsed XML document.
 If unsuccessful, log an error message, bump the error count, and
@@ -1785,8 +1890,7 @@ sub parse_response {
     # Fail if reponse=undef, else check to see if response is ref to
     # response object or is string
     if (!defined($response) or not ref($response)) {
-        $self->log->warn("Bad response from server",
-                         "Bad response to $request_url");
+        $self->log->warn("Bad response from server");
         return;
     }
     # Unpack the bits we want from response object
@@ -1794,8 +1898,7 @@ sub parse_response {
     my $content=$response->content;
     # Check return code (if given)
     if ($code and $code=~/^[45]/) {
-        $self->log->warn("Bad HTTP status code from server: $code",
-                         "Bad response to $request_url\nServer gave HTTP status code $code");
+        $self->log->warn("Bad HTTP status code from server: $code");
         return;
     }
     #
@@ -1807,9 +1910,13 @@ sub parse_response {
         $err=~s/^\s+//;
         $err=~s%at\s+/usr/lib/perl.*%%i; #trim stuff about our perl installation
         if ($request_url) {
-            $xml_reason="The most common reason for malformed responses is illegal bytes in UTF-8 streams (e.g. the inclusion of Latin1 characters with codes>127 without creating proper UTF-8 mutli-byte sequences). You might find Simeon Warner's utf8conditioner, found on the OAI tools page or downloadable from http://www.cs.cornell.edu/people/simeon/software/utf8conditioner/ helpful for debugging." unless ($xml_reason);
-            $self->log->warn("Malformed response: $err",
-                             "Malformed response to $request_url\n$err\n$xml_reason");
+            unless ($xml_reason) {
+                $xml_reason="The most common reason for malformed responses is illegal bytes in ".
+                            "UTF-8 streams (e.g. the inclusion of Latin1 characters with codes>127 ".
+                            "without creating proper UTF-8 mutli-byte sequences). You might find ".
+                            "the utf8conditioner, found on the OAI tools page helpful for debugging.";
+            }
+            $self->log->warn("Malformed response: $err. $xml_reason");
         }
         return;
     }
