@@ -1,7 +1,7 @@
 # Tests for HTTP::OAIPMH::Log
 use strict;
 
-use Test::More tests => 89;
+use Test::More tests => 90;
 use HTTP::OAIPMH::Log;
 use JSON qw(decode_json);
 
@@ -137,3 +137,4 @@ ok( $failures=~/## Failure summary/, "failures title");
 ok( $failures=~/REQUEST:\s+request2\s+FAIL:\s+request2 fail1\s+FAIL:\s+request2 fail2/, 'correct fails');
 is_deeply( $log->last_match(qr/fail1/), ['FAIL','request2 fail1']);
 is_deeply( $log->last_match(qr/noteeee/), ['NOTE','request1 noteeee']);
+is( $log->last_match(qr/no-match/), undef, 'no match -> empty return');
