@@ -71,6 +71,12 @@ false otherwise. All actions are logged and may be accessed to provide a report
 Arguments:
   $skip\_identify - set true to skip the text\_identify() step
 
+### failures()
+
+Return Markdown summary of failure log entries, along with the appropriate
+titles and request details. Will return empty string if there are no
+failures in the log.
+
 ### summary()
 
 Return summary statistics for the validation in Markdown (designed to agree
@@ -317,7 +323,9 @@ the request should be an HTTP POST request instead of a GET.
 Attempt to parse the HTTP response $response, examining both the response code
 and then attempting to parse the content as XML.
 
-If $xml\_reason is specified then ...FIXME
+If $xml\_reason is specified then this is added to the failure message, if
+nothing is specified then a standard message about UTF-8 issues is 
+added.
 
 Returns true on success and sets $self->doc with the parsed XML document.
 If unsuccessful, log an error message, bump the error count, and

@@ -41,7 +41,16 @@ attributes. All attributes also have accessors provided via
     num_fail - number of fail messages
     num_warn - number of warn messages
 
-### fh($fh, $type)
+### fh(@fhspecs)
+
+Set the list of filehandle specs that will be written to, clearing
+any that already exist. Each entry in the @fhspec array should be a 
+either a filehandle or an arrayref \[$fh,$type\] used to call
+$self->add\_fh($fh,$type) to set the type as well.
+
+Returns number of filehandles in the list to write to.
+
+### add\_fh($fh,$type)
 
 Add a filehandle to the logger. If $type is set equal to 'json' then
 JSON will be written, els if 'html then HTML will be written, otherwise
@@ -66,17 +75,28 @@ the $content.
 
 Add note of extra information that doesn't impact validity.
 
-### fail($msg,$longmsg)
+### fail($msg)
 
-Record a failure and increment the $obj->num\_fail count. Must have
-a message $msg and may optionally include a longer explanation $longmsg.
+Record a failure and increment the $obj->num\_fail count.
 
-### warn($msg,$longmsg)
+### warn($msg)
 
-Record a warning and increment the $obj->num\_warn count. Must have
-a message $msg and may optionally include a longer explanation $longmsg.
+Record a warning and increment the $obj->num\_warn count.
 
-### pass($msg,$longmsg)
+### pass($msg)
 
 Record a success and increment the $obj->num\_pass count. Must have
 a message $msg explaining what has passed.
+
+## INTERROGATING THE LOG
+
+### failures()
+
+Return Markdown summary of failure log entries, along with the appropriate
+titles and request details. Will return empty string if there are no
+failures in the log.
+
+### last\_match($regex)
+
+Return last log entry where the message matches $regex, else
+empty return.
