@@ -38,7 +38,7 @@ use HTTP::Status;                 # for checking error codes
 use LWP::UserAgent;               # send http requests
 use LWP::Protocol::https;         # explicit include so we fail without https support
 use URI::Escape;                  # excape special characters
-use XML::DOM;                     # for parsing XSV output
+use XML::DOM;
 use HTTP::OAIPMH::Log;
 
 =head2 METHODS
@@ -74,7 +74,7 @@ accessors (via L<Class::Accessor::Fast>):
 
 HTTP::OAIPMH::Validator->mk_accessors( qw( base_url protocol_version
     admin_email granularity uses_503 uses_https
-    debug parser run_id ua allow_https content doc save_all_responses
+    debug parser run_id ua allow_https doc save_all_responses
     response_number http_timeout max_retries max_size
     protocol guidelines
     identify_response earliest_datestamp namespace_id set_names
@@ -98,7 +98,6 @@ sub new {
         'run_id' => undef,
         'ua' => undef,
         'allow_https' => 0,         # allow https URIs
-        'content' => undef,         # current unparsed response content
         'doc' => undef,             # current parsed xml document
         'save_all_responses' => 0,  # set True to save all HTTP responses
         'response_number' => 1,     # initial response number
