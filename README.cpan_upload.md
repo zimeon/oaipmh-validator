@@ -8,9 +8,13 @@ A reminder for @zimeon...
   * `perl Makefile.PL`
   * `make test`
   * `make dist` will create file `HTTP-OAIPMH-Validator-V.VV.tar.gz` (where `V.VV` is the version number)
-  * Login to PAUSE at <https://pause.perl.org/pause/authenquery>, select **Upload a file to CPAN** and upload the tar.gz file, which should then show under **Show my files**. After some time additional `.meta` and `.readme` files will appear
+  * Login to PAUSE at <https://pause.perl.org/pause/authenquery>, select **Upload a file to CPAN** and upload the tar.gz file, which should then show under **Show my files**. After a short time additional `.meta` and `.readme` files will appear
 
-After some time, the updated module should show up on
+After some longer time (and some status emails from PAUSE), the updated module should show up on
 
   * [cpan.org](http://search.cpan.org/dist/HTTP-OAIPMH-Validator)
   * [metacpan.org](https://metacpan.org/pod/HTTP::OAIPMH::Validator) 
+
+and test results will show on
+
+  * [cpantesters.org](http://matrix.cpantesters.org/?dist=HTTP-OAIPMH-Validator)
