@@ -1855,7 +1855,6 @@ sub make_request {
                          $response->header('X-Content-Range')."' Content-Length: '".$response->content_length."')\n");
         $response->content('');
     }
-    $self->content( $response->content );
     return $response;
 }
 

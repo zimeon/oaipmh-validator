@@ -1,9 +1,13 @@
 # Simple tests for HTTP::OAIPMH::Validator
 use strict;
 
-use Test::More tests => 32;
+use Test::More tests => 74;
+use Test::Exception;
 use Try::Tiny;
+use HTTP::Response;
 use HTTP::OAIPMH::Validator;
+
+my @RESPONSES = (); # Used for dummy response handler to short-circuit HTTP requests
 
 my $v;
 $v = HTTP::OAIPMH::Validator->new;
@@ -13,13 +17,7 @@ ok( $v, "created Validator object" );
 is( ref($v->setup_user_agent()), 'LWP::UserAgent', 'setup_user_agent' );
 
 #abort (should die)
-my $caught='abort did not die';
-try {
-    $v->abort('bwaaaa!');
-} catch {
-    $caught=$_;
-};
-ok( $caught=~m/^ABORT: bwaaaa!/, 'abort dies' );
+throws_ok( sub { $v->abort('bwaaaa!'); }, qr/^ABORT: bwaaaa!/, 'abort dies' );
 
 #run_complete_validation
 
@@ -31,11 +29,11 @@ ok( $v->summary=~/  \* Total warnings: 0/ );
 ok( $v->summary=~/  \* Total error count: 0/ );
 ok( $v->summary=~/  \* Validation status: unknown/, 'summary has status unknown' );
 
-#test_identify
+#test_identify -> separate test file
 #test_list_sets
 #test_list_identifiers
 #test_list_metadata_formats
-#test_get_record
+#test_get_record -> separate test file
 #test_list_records
 #test_resumption_tokens
 #test_expected_errors
@@ -65,12 +63,60 @@ ok( $v->summary=~/  \* Validation status: unknown/, 'summary has status unknown'
 #get_admin_email
 
 #bad_admin_email
+ok( $v = HTTP::OAIPMH::Validator->new, 'new validator object' );
+ok( $v->bad_admin_email(''), 'empty');
+is( $v->log->num_fail, 1);
+is( $v->log->log->[-1][0], 'FAIL');
+ok( $v->bad_admin_email('anything@localhost')=~/local/, 'bad_admin_email localhost');
+is( $v->log->num_fail, 2);
+is( $v->log->log->[-1][0], 'FAIL');
+is( $v->bad_admin_email('anything@localhost.somewhere'), undef, 'ok not localhost');
+is( $v->log->num_fail, 2);
+ok( $v->bad_admin_email('anything@some where')=~/bogus/, 'bogus');
+is( $v->log->num_fail, 3);
+is( $v->log->log->[-1][0], 'FAIL');
+ok( $v->bad_admin_email('@some.where')=~/bogus/, 'bogus');
+is( $v->log->num_fail, 4);
+is( $v->log->log->[-1][0], 'FAIL');
 
 #make_request_and_validate
+ok( $v = HTTP::OAIPMH::Validator->new, 'new validator object' );
+$v->ua->add_handler( request_send => sub { return shift(@RESPONSES); } );
+@RESPONSES = ( HTTP::Response->new(200, 'OK'));
+is( $v->make_request_and_validate('verb','http://example.org/req'), undef, 'make_request_and_validate bad_xml');
+is( $v->log->log->[-1][0], 'FAIL');
+ok( $v->log->log->[-1][1], 'Failed to parse response');
 
 #make_request
+ok( $v = HTTP::OAIPMH::Validator->new, 'new validator object' );
+throws_ok( sub { $v->make_request('https://example.org/req') }, qr%ABORT: URI https://example.org/req is https%, 'https');
+$v->ua->add_handler( request_send => sub { return shift(@RESPONSES); } );
+@RESPONSES = ( HTTP::Response->new(200, 'OK', [], 'content_123'));
+# GET
+my $resp=$v->make_request('http://example.org/req');
+is( $v->log->log->[-1][1], 'http://example.org/req GET');
+is( $resp->code, '200', 'simple request');
+is( $resp->content, 'content_123', 'simple request');
 
 #parse_response
+ok( $v = HTTP::OAIPMH::Validator->new, 'new validator object' );
+is( $v->parse_response('url1',undef), undef, 'parse_response on undef');
+is_deeply( $v->log->log->[-1], ['WARN','Bad response from server']);
+is( $v->parse_response('url2',''), undef, 'parse_response on empty');
+is_deeply( $v->log->log->[-1], ['WARN','Bad response from server']);
+is( $v->parse_response('url3',HTTP::Response->new('404','')), undef, 'parse_response on 404');
+is_deeply( $v->log->log->[-1], ['WARN','Bad HTTP status code from server: 404']);
+is( $v->parse_response('url4',HTTP::Response->new('500','')), undef, 'parse_response on 500');
+is_deeply( $v->log->log->[-1], ['WARN','Bad HTTP status code from server: 500']);
+is( $v->parse_response('url5',HTTP::Response->new('200','bad_xml')), undef, 'parse_response on bad_xml');
+is( $v->log->log->[-1][0], 'WARN');
+ok( $v->log->log->[-1][1]=~/Malformed response:/, 'matches malformed response');
+ok( $v->log->log->[-1][1]=~/The most common reason for malformed/, 'matches most common reason');
+is( $v->parse_response('url6',HTTP::Response->new('200','bad_xml'),'special_reason'), undef, 'parse_response on bad_xml, special reason');
+is( $v->log->log->[-1][0], 'WARN');
+ok( $v->log->log->[-1][1]=~/Malformed response:/, 'matches malformed response');
+ok( $v->log->log->[-1][1]!~/The most common reason for malformed/, 'does not match most common reason');
+ok( $v->log->log->[-1][1]=~/special_reason/, 'matches special_reason');
 
 ##### FUNCTIONS
 
