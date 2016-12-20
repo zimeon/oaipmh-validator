@@ -1,7 +1,7 @@
 # Simple tests for HTTP::OAIPMH::Validator
 use strict;
 
-use Test::More tests => 74;
+use Test::More tests => 86;
 use Test::Exception;
 use Try::Tiny;
 use HTTP::Response;
@@ -53,6 +53,18 @@ ok( $v->summary=~/  \* Validation status: unknown/, 'summary has status unknown'
 #parse_granularity
 
 #get_datestamp_granularity
+ok( $v = HTTP::OAIPMH::Validator->new, 'new validator object' );
+is( $v->get_datestamp_granularity(), undef );
+is( $v->get_datestamp_granularity(''), undef );
+is( $v->get_datestamp_granularity('123'), undef );
+is( $v->get_datestamp_granularity('2016'), undef );
+is( $v->get_datestamp_granularity('2016-11-1'), undef );
+is( $v->get_datestamp_granularity('2016-11-111'), undef );
+is( $v->get_datestamp_granularity('2016-11-11T01:01:01.Z'), undef );
+is( $v->get_datestamp_granularity('2016-11-11'), 'days' );
+is( $v->get_datestamp_granularity('2016-11-11T01:01:01Z'), 'seconds' );
+is( $v->get_datestamp_granularity('2016-11-11T01:01:01.1Z'), 'seconds' );
+is( $v->get_datestamp_granularity('2016-11-11T01:01:01.123456Z'), 'seconds' );
 
 #is_no_records_match
 
