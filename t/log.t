@@ -1,7 +1,7 @@
 # Tests for HTTP::OAIPMH::Log
 use strict;
 
-use Test::More tests => 60;
+use Test::More tests => 89;
 use HTTP::OAIPMH::Log;
 use JSON qw(decode_json);
 
@@ -99,3 +99,41 @@ is( $j->{'num'}, 1, 'num==1' );
 is( $j->{'type'}, 'ONE', 'type==ONE' );
 is( $j->{'msg'}, 'SOME', 'msg==SOME' );
 ok( $j->{'timestamp'}, 'timestamp is True' );
+
+# _add method and on-the-fly HTML output
+$log = HTTP::OAIPMH::Log->new;
+ok( $log, "created new Log object" );
+$str=''; open( $fh, '>', \$str);
+is( $log->fh([$fh,'html']), 1, "connected out to str, type html" );
+ok( $log->_add("TITLE","A title"), "_add TITLE" );
+ok( $str=~/<h3 class="oaipmh-log-title">/, 'title class' );
+ok( $str=~/A title/, 'the title' );
+$str=''; open( $fh, '>', \$str);
+is( $log->fh([$fh,'html']), 1, "connected out to str, type html" );
+ok( $log->_add("FAIL","Barf","more"), "_add FAIL" );
+ok( $str=~/<div class="oaipmh-log-line/, 'line class' );
+ok( $str=~/<span class="oaipmh-log-num/, 'num class' );
+ok( $str=~/<span class="oaipmh-log-type">FAIL</, 'type class and content' );
+ok( $str=~/<span class="oaipmh-log-msg">Barf more</, 'msg class and content' );
+
+# Tests for log interrogration: failures() and last_match()
+$log = HTTP::OAIPMH::Log->new;
+ok( $log, "created new Log object" );
+ok( $log->start("A title"), "add TITLE" );
+ok( $log->request("request1"), "_add request1" );
+ok( $log->pass("request1 pass1"), "_add request1 pass1" );
+ok( $log->pass("request1 pass2"), "_add request1 pass2" );
+ok( $log->note("request1 noteeee"), "_add request1 note" );
+ok( $log->pass("request1 pass3"), "_add request1 pass3" );
+is( $log->failures, '', 'no failures');
+ok( $log->request("request2"), "_add request2" );
+ok( $log->pass("request2 pass1"), "_add request2 pass1" );
+ok( $log->note("request2 note"), "_add request2 note" );
+ok( $log->fail("request2 fail1"), "_add request2 fail1" );
+ok( $log->pass("request2 pass2"), "_add request2 pass2" );
+ok( $log->fail("request2 fail2"), "_add request2 fail2" );
+my $failures = $log->failures();
+ok( $failures=~/## Failure summary/, "failures title"); 
+ok( $failures=~/REQUEST:\s+request2\s+FAIL:\s+request2 fail1\s+FAIL:\s+request2 fail2/, 'correct fails');
+is_deeply( $log->last_match(qr/fail1/), ['FAIL','request2 fail1']);
+is_deeply( $log->last_match(qr/noteeee/), ['NOTE','request1 noteeee']);
