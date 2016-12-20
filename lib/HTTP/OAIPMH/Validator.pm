@@ -233,29 +233,15 @@ sub run_complete_validation {
 
 =head3 failures()
 
+Return Markdown summary of failure log entries, along with the appropriate
+titles and request details. Will return empty string if there are no
+failures in the log.
+
 =cut
 
 sub failures {
     my $self=shift;
-    return('') if ($self->log->num_fail==0);  #shirt circuit if no failures
-
-    my $str="\n## Failure summary\n\n";
-    my $last_title='Unknown title';
-    my $last_request=undef;
-    for my $entry (@{$self->log->log}) {
-    	my $type = @$entry[0];
-	if ($type eq 'TITLE') {
-	    $last_title=$entry;
-            $last_request=undef;
-        } elsif ($type eq 'REQUEST') {
-	    $last_request=$entry;
-        } elsif ($type eq 'FAIL') {
-            $str .= join(" ",@$last_title)."\n" if (defined $last_title);
-            $str .= join(" ",@$last_request)."\n" if (defined $last_request);
-            $str .= join(" ",@$entry)."\n";
-        }
-    }
-    return($str);
+    return($self->log->failures());
 }
 
 

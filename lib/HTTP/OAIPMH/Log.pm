@@ -219,9 +219,14 @@ sub pass {
 #
 sub _add {
     my $self=shift;
-    push( @{$self->{log}}, [@_] );
+    my $type=shift;
+    my $msg=join(' ',@_);
+    # do a little tidy on the message
+    $msg=~s/\s+$//;
+    $msg=~s/\n/ /g;
+    push(@{$self->{log}}, [$type,$msg]);
     if (scalar($self->filehandles)>0) {
-        $self->_write_to_filehandles([@_], $self->filehandles);
+        $self->_write_to_filehandles([$type,$msg], $self->filehandles);
     }
     return(1);
 }
@@ -234,67 +239,102 @@ sub _add {
 sub _write_to_filehandles {
     my $self = shift(@_);
     my ($entry, $filehandles) = @_;
-    my $type = shift(@$entry);
-    my $md_prefix = '';
-    my $md_suffix = "\n";
-    my $msg = join(' ',@$entry);
+    my ($type, $msg) = @$entry;
     foreach my $fhd (@$filehandles) {
         if ($fhd->{'type'} eq 'json') {
-            $self->_write_json($fhd->{'fh'},$type,$msg);
+            print {$fhd->{'fh'}} $self->_json($type,$msg);
         } elsif ($fhd->{'type'} eq 'html') {
-            $self->_write_html($fhd->{'fh'},$type,$msg);
+            print {$fhd->{'fh'}} $self->_html($type,$msg);
         } else {
-            if ($type eq 'TITLE') {
-                $md_prefix = "\n### ";
-                $md_suffix = "\n\n";
-            } else {
-                $md_prefix = sprintf("%-8s ",$type.':');
-            }
-            $self->_write_md($fhd->{'fh'},$md_prefix,$msg,$md_suffix);
+            print {$fhd->{'fh'}} $self->_md($type,$msg);
         }
     }
     return(1);
 }
 
 
-# _write_md($fh, @msg) - Write a markdown log entry to $fh, combining
-# all @msg by simple concatenation to make the string
+# _md($type, $msg) - Return markdown for a log entry
 #
-sub _write_md {
+sub _md {
     my $self=shift;
-    my $fh=shift;
-    print {$fh} join('',@_);
+    my ($type,$msg)=@_;
+    my $md_prefix = '';
+    my $md_suffix = "\n";
+    if ($type eq 'TITLE') {
+        $md_prefix = "\n### ";
+        $md_suffix = "\n\n";
+    } else {
+        $md_prefix = sprintf("%-8s ",$type.':');
+    }
+    return($md_prefix.$msg.$md_suffix);
 }
 
-# _write_html($fh,$type,$msg) - Write an HTML log entry to $fh, using
+# _html($type,$msg) - Return HTML for a log entry, using
 # classes to allow CSS styling
 #
-sub _write_html {
+sub _html {
     my $self=shift;
-    my ($fh,$type,$msg)=@_;
+    my ($type,$msg)=@_;
     if ($type eq 'TITLE') {
-        print {$fh} '<h3 class="oaipmh-log-title">'.$msg."</h3>\n";
+        return('<h3 class="oaipmh-log-title">'.$msg."</h3>\n");
     } else {
-        print {$fh} '<div class="oaipmh-log-line oaipmh-log-'.$type.'">'.
-                    '<span class="oaipmh-log-num">'.scalar(@{$self->{log}}).'</span> '.
-                    '<span class="oaipmh-log-type">'.$type.'</span> '.
-                    '<span class="oaipmh-log-msg">'.$msg."</span></div>\n";
+        return('<div class="oaipmh-log-line oaipmh-log-'.$type.'">'.
+               '<span class="oaipmh-log-num">'.scalar(@{$self->{log}}).'</span> '.
+               '<span class="oaipmh-log-type">'.$type.'</span> '.
+               '<span class="oaipmh-log-msg">'.$msg."</span></div>\n");
     }
 }
 
-# _write_json($fh,$type,$msg) - Write a one-line JSON object to
-# $fh, terminate with \n.
+# _json($fh,$type,$msg) - Return one-line JSON for a
+# log entry, terminate with \n.
 #
-sub _write_json {
+sub _json {
     my $self=shift;
-    my ($fh,$type,$msg)=@_;
-    print {$fh} encode_json({ type=>$type, msg=>$msg,
-                              num=>scalar(@{$self->{log}}),
-                              pass=>$self->num_pass,
-                              fail=>$self->num_fail,
-                              warn=>$self->num_warn,
-                              timestamp=>''.localtime() })."\n";
+    my ($type,$msg)=@_;
+    return(encode_json({type=>$type, msg=>$msg,
+                        num=>scalar(@{$self->{log}}),
+                        pass=>$self->num_pass,
+                        fail=>$self->num_fail,
+                        warn=>$self->num_warn,
+                        timestamp=>''.localtime() })."\n");
 }
+
+
+=head2 INTERROGATING THE LOG
+
+=head3 failures()
+
+Return Markdown summary of failure log entries, along with the appropriate
+titles and request details. Will return empty string if there are no
+failures in the log.
+
+=cut
+
+sub failures {
+    my $self=shift;
+    return('') if ($self->num_fail==0);  #shirt circuit if no failures
+
+    my $str="\n## Failure summary\n";
+    my $last_title='Unknown title';
+    my $last_request=undef;
+    for my $entry (@{$self->log}) {
+        my ($type, $msg) = @$entry;
+        if ($type eq 'TITLE') {
+            $last_title=$entry;
+            $last_request=undef;
+        } elsif ($type eq 'REQUEST') {
+            $last_request=$entry;
+        } elsif ($type eq 'FAIL') {
+            $str .= $self->_md(@$last_title) if (defined $last_title);
+            $str .= $self->_md(@$last_request) if (defined $last_request);
+            $str .= $self->_md(@$entry);
+            $last_title = undef;
+            $last_request = undef;
+        }
+    }
+    return($str);
+}
+
 
 
 =head3 last_match($regex)
