@@ -42,7 +42,7 @@ if ($opt{i} and scalar(@ARGV)>1) {
 }
 $opt{w} ||= $opt{i};
 if (scalar(@ARGV)!=1) {
-    die "Error - Must specify one baseURl (-h for help).\n"
+    die "Error - Must specify one baseURL (-h for help).\n"
 }
 my $base_url = shift(@ARGV);
 
