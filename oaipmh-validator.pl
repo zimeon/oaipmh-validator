@@ -16,7 +16,7 @@ of JSON snippets.
              file prefix, implies -w)
   -w         write responses to files in tmp
   -l logfile write log of JSON snippets
-  -s         allow HTTPS base URL (not part of the OAI-PMH specification)
+  -s         do not allow HTTPS base URL (not part of the OAI-PMH specification)
   -v         verbose debugging output
   -h         this help
 
@@ -50,7 +50,7 @@ print "\n# RUNNING VALIDATION FOR $base_url\n";
 my $val = HTTP::OAIPMH::Validator->new( base_url=>$base_url, 
                                         save_all_responses=>$opt{w},
                                         run_id=>$opt{i},
-                                        allow_https=>$opt{s},
+                                        allow_https=>not($opt{s}),
                                         debug=>$opt{d} );
 $val->log->fh(\*STDOUT); $|=1;
 if ($opt{l}) {

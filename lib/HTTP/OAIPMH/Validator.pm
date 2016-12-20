@@ -1767,7 +1767,8 @@ sub make_request {
     if (is_https_uri($url)) {
         $self->uses_https(1);
         if (not $self->allow_https) {
-            $self->abort("URI $url is https. The HTTPS protocol is not specified in the OAI-PMH and is not currently supported");
+            $self->abort("URI $url is https. Use of https URIs is not allowed ".
+                         "by the OAI-PMH v2.0 specification");
         }
     }
 
@@ -1816,7 +1817,8 @@ sub make_request {
                     if ($retryAfter<=3600) {
                         ###FIXME: Should check the Retry-After value carefully and barf if bad
                         my $sleep_time = 1 + $response->header("Retry-After");
-                        $self->log->note("Status: ".$response->code()." -- going to sleep for $sleep_time seconds.");
+                        $self->log->note("Status: ".$response->code().
+                                         " -- going to sleep for $sleep_time seconds.");
                         sleep $sleep_time;
                     } else {
                         $self->abort("503 response with Retry-After > 1hour (3600s), aborting");
@@ -1834,11 +1836,14 @@ sub make_request {
             # 302 (Found) redirect
             my $loc=$response->header('Location');
             if ($loc!~m%^http://([^\?&]+)%) {
-                if ($loc=~m%^https:%) {
+                if (is_https_uri($loc)) {
                     $self->uses_https(1);
                     if (not $self->allow_https) {
-                        $self->abort("Bad https Location specified in 302 response ('$loc'). The HTTPS protocol is not specified in the OAI-PMH and is not currently supported");
+                        $self->abort("Redirect URI specified in 302 response is https. Use of ".
+                                     "https URIs is not allowed by the OAI-PMH v2.0 specification");
                     }
+                } else {
+                    $self->abort("Bad redirect URI specified in 302 response");
                 }
             }
             # Make new request
@@ -1848,7 +1853,9 @@ sub make_request {
                 $request = GET($loc);
             }
         } elsif ($response->code eq '501') {
-            $self->abort("Got 501 Not Implemented response which may either have come from the server or have been generated within the validator because the request type (perhaps https) is not supported.");
+            $self->abort("Got 501 Not Implemented response which may either have come from ".
+                         "the server or have been generated within the validator because the ".
+                         "request type (perhaps https) is not supported.");
         } else {
             $try_again=0;
         }
