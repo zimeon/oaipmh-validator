@@ -3,11 +3,8 @@
 [![Build status](https://travis-ci.org/zimeon/oaipmh-validator.svg?branch=master)](https://travis-ci.org/zimeon/oaipmh-validator)
 [![Coverage Status](https://coveralls.io/repos/github/zimeon/oaipmh-validator/badge.svg?branch=master)](https://coveralls.io/github/zimeon/oaipmh-validator?branch=master)
 
-*Work in progress...*
-
-Tidy and refactor of code used for the OAI-PMH validation services
-at <http://www.openarchives.org/data/registerasprovider.html>. Not yet
-complete and not yet used for that service...
+Tidy and refactor of code used for the OAI-PMH validation service
+at <http://www.openarchives.org/pmh/register_data_provider>.
 
 ## Test validator
 
