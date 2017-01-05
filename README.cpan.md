@@ -34,7 +34,7 @@ You can also look for information at:
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2001-2016 by Simeon Warner, Donna Bergmark.
+Copyright (C) 2001-2017 by Simeon Warner, Donna Bergmark.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

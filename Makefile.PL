@@ -24,6 +24,7 @@ WriteMakefile(
 	'Try::Tiny' => 0.19,
         'URI::Escape' => 3.31,
         'XML::DOM' => 1.44,
+	'CGI' => 3.50,
     },
     BUILD_REQUIRES => {
 	'Test::Pod' => 1.48,

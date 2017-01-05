@@ -378,12 +378,13 @@ of the code. That code ran the validation and registration service with
 few changes through 2015-01. Some of the early work on the OAI-PMH validation
 service was supported through NSF award number 0127308.
 
-Code was abstracted into this module 2015-01 by Simeon Warner and will
-be used for the OAI-PMH validation and registration service.
+Code was abstracted into this module 2015-01 by Simeon Warner and is
+used for the OAI-PMH validation and registration service on
+[http://www.openarchives.org/pmh/](http://www.openarchives.org/pmh/).
 
 # COPYRIGHT
 
-Copyright 2001..2016 by Simeon Warner, Donna Bergmark.
+Copyright 2001..2017 by Simeon Warner, Donna Bergmark.
 
 This library is free software; you can redistribute it and/or modify it under
 the same terms as Perl itself.
