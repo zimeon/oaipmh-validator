@@ -26,7 +26,7 @@ Typical use:
 
 use strict;
 
-our $VERSION = '1.06';
+our $VERSION = '1.07';
 
 use base qw(Class::Accessor::Fast);
 use Data::UUID;
