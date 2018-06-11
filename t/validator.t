@@ -1,10 +1,11 @@
 # Simple tests for HTTP::OAIPMH::Validator
 use strict;
 
-use Test::More tests => 86;
+use Test::More tests => 89;
 use Test::Exception;
 use Try::Tiny;
 use HTTP::Response;
+use XML::DOM;
 use HTTP::OAIPMH::Validator;
 
 my @RESPONSES = (); # Used for dummy response handler to short-circuit HTTP requests
@@ -40,7 +41,16 @@ ok( $v->summary=~/  \* Validation status: unknown/, 'summary has status unknown'
 #test_expected_v2_errors
 #test_post_requests
 #test_post_request
+
 #check_response_date
+my $parser = XML::DOM::Parser->new();
+$v->check_response_date('', $parser->parse('<?xml version="1.0" encoding="UTF-8"?><OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd"><responseDate>2018-06-11T18:13:09Z</responseDate></OAI-PMH>'));
+is( $v->log->log->[-1][0], 'PASS');
+$v->check_response_date('', $parser->parse('<?xml version="1.0" encoding="UTF-8"?><OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd"><responseDate>2018-06-11T18:13:09.000Z</responseDate></OAI-PMH>'));
+is( $v->log->log->[-1][0], 'FAIL');
+$v->check_response_date('', $parser->parse('<?xml version="1.0" encoding="UTF-8"?><OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd"><responseDate>2018-06-11T18:13:09+0100</responseDate></OAI-PMH>'));
+is( $v->log->log->[-1][0], 'FAIL');
+
 #check_schema_name
 #check_protocol_version
 

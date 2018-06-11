@@ -1239,8 +1239,10 @@ sub test_post_request {
 
 =head3 check_response_date($req, $doc)
 
-Check responseDate for being in UTC format
-(should perhaps also check that it is at least the current day?)
+Check responseDate for being in UTC format and without decimal seconds
+(a common error).
+
+FIXME - Should perhaps also check that it is at least the current day?
 
 =cut
 
@@ -1248,17 +1250,21 @@ sub check_response_date {
     my $self=shift;
     my ($req, $doc) = @_;
 
-    my $elements = $self->doc->getElementsByTagName('responseDate');
+    my $elements = $doc->getElementsByTagName('responseDate');
     # assume rest of validity already checked, just take first
     my $item;
     my $child;
     if ($elements and $item=$elements->item(0) and $child=$item->getFirstChild()) {
         my $date = $child->getData();
-        if ($date=~/\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ/) {
+        if ($date=~/^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ$/) {
             $self->log->pass("responseDate has correct format: $date");
+        } elsif ($date=~/^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d*Z$/) {
+            $self->log->fail("Bad responseDate of $date, the date is a UTC DateTime but ".
+                             "includes decimal seconds which are not allowed by the ".
+                             "specification, must be YYYY-MM-DDThh:mm:ssZ format");
         } else {
-            $self->log->fail("Bad responseDate of $date, this is not in UTC DateTime ".
-                             "(YYYY-MM-DDThh:mm:ssZ) format");
+            $self->log->fail("Bad responseDate of '$date', this is not in UTC DateTime ".
+                             "YYYY-MM-DDThh:mm:ssZ format");
         }
     } else {
        $self->log->fail("Failed to extract responseDate");
