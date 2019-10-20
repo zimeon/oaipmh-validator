@@ -8,7 +8,7 @@ perl:
 #  - "5.12"
 #  - "5.10"
 install:
-  - cpanm --quiet --notest Devel::Cover::Report::Coveralls
+  - cpanm --quiet --notest Devel::Cover
   - cpanm -n -q --skip-satisfied --notest --installdeps .
 # docs for options: http://search.cpan.org/~pjcj/Devel-Cover-1.17/lib/Devel/Cover.pm
 script:
