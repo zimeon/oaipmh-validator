@@ -27,6 +27,8 @@ WriteMakefile(
         'CGI' => 3.50,
     },
     BUILD_REQUIRES => {
+        'Devel::Cover' => 1.17,
+        'Devel::Cover::Report::Coveralls' => 0.11,
         'Test::Simple' => 1.001, # for Test::More
         'Test::Pod' => 1.48,
         'Test::Exception' => 0.38,
