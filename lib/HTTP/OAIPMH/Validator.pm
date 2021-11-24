@@ -301,6 +301,15 @@ sub test_identify {
 
     my $response = $self->make_request($req); #don't use make_request_and_validate() just do simplest thing here
     unless ($response->is_success) {
+        # catch 500 responses generated at the Validator end, not by the server being validated
+        if( defined $response->header( "Client-Warning" ) && $response->header( "Client-Warning" ) eq "Internal response" )
+        {
+            my $r = "Validator failed to connect to server at base URL '$burl'.\n";
+            $self->log->fail($r . "Response:\n" . $response->as_string );
+            $self->abort("$r");
+            return;
+        }
+        
         my $r="Server at base URL '$burl' failed to respond to Identify. The HTTP GET request with URL $req received response code '".$response->code()."'.";
         if ($response->code() == 301) {
             $self->log->fail("$r HTTP code 301 'Moved Permanently' is not widely supported by ".
